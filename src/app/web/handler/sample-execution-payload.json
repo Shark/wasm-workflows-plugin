@@ -1,0 +1,41 @@
+{
+  "template": {
+    "inputs": {
+      "artifacts": [{
+        "name": "message",
+        "path": "/tmp/message",
+        "s3": {
+          "key": "hello-n7nbj/hello-n7nbj-4176884829/hello-art.tgz"
+        }
+      }],
+      "parameters": [{
+        "name": "name",
+        "value": "felix"
+      }]
+    },
+    "metadata": {},
+    "name": "hello",
+    "outputs": {
+      "parameters": [{
+        "name": "message",
+        "value": ""
+      }]
+    },
+    "plugin": {
+      "hello": {
+        "some": {
+          "nested": {
+            "args": 42,
+            "bool": true,
+            "str": "str"
+          }
+        }
+      }
+    }
+  },
+  "workflow": {
+    "metadata": {
+      "name": "hello-n7nbj"
+    }
+  }
+}
