@@ -11,52 +11,58 @@ pub struct ExecuteTemplatePayload {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Template {
-    inputs: Inputs,
-    metadata: HashMap<String, String>,
-    name: String,
-    outputs: Outputs,
-    plugin: Plugin,
+    pub inputs: Inputs,
+    pub metadata: HashMap<String, String>,
+    pub name: String,
+    pub outputs: Outputs,
+    pub plugin: Plugin,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Inputs {
-    artifacts: Option<Vec<Artifact>>,
-    parameters: Option<Vec<Parameter>>,
+    pub artifacts: Option<Vec<Artifact>>,
+    pub parameters: Option<Vec<Parameter>>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Outputs {
-    artifacts: Option<Vec<Artifact>>,
-    parameters: Option<Vec<Parameter>>,
+    pub artifacts: Option<Vec<Artifact>>,
+    pub parameters: Option<Vec<Parameter>>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Artifact {
-    name: String,
-    path: String,
-    s3: Option<S3Artifact>,
+    pub name: String,
+    pub path: String,
+    pub s3: Option<S3Artifact>,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct S3Artifact {
-    key: String,
+    pub key: String,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Parameter {
-    name: String,
-    value: String,
+    pub name: String,
+    pub value: String,
 }
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Plugin {
-    wasm: HashMap<String, String>,
+    pub wasm: WasmPluginConfig,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct WasmPluginConfig {
+    pub image: String,
 }
 
 #[derive(Deserialize, Debug)]

@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use axum::http::{StatusCode};
 use axum::Json;
 use axum::response::{IntoResponse, Response};
@@ -9,7 +8,8 @@ use crate::app::model::{ExecuteTemplatePayload, ExecuteTemplateResult};
 pub async fn execute_template(Json(payload): Json<ExecuteTemplatePayload>) -> Result<Json<ExecuteTemplateResult>, AppError> {
     debug!("Payload: {:?}", payload);
 
-    match crate::app::wasm::run(PathBuf::from("demo_mod.wasm"), &payload.template, &payload.workflow).await {
+    // TODO don't hardcode insecure registries
+    match crate::app::wasm::run(&payload.template, &payload.workflow, vec!["192.168.64.2:32000".to_string()]).await {
         Ok(result) => Ok(result.into()),
         Err(err) => {
             error!("Error: {:?}", err);
