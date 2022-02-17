@@ -2,16 +2,19 @@ use std::path::PathBuf;
 use axum::http::{StatusCode};
 use axum::Json;
 use axum::response::{IntoResponse, Response};
-use tracing::{debug};
+use tracing::{debug, error};
 use serde_json::json;
 use crate::app::model::{ExecuteTemplatePayload, ExecuteTemplateResult};
 
 pub async fn execute_template(Json(payload): Json<ExecuteTemplatePayload>) -> Result<Json<ExecuteTemplateResult>, AppError> {
     debug!("Payload: {:?}", payload);
 
-    match crate::app::wasm::run(PathBuf::from("demo_mod.wasm"), &payload.template, &payload.workflow) {
+    match crate::app::wasm::run(PathBuf::from("demo_mod.wasm"), &payload.template, &payload.workflow).await {
         Ok(result) => Ok(result.into()),
-        Err(_) => Err(ModuleExecutionError::Generic.into()),
+        Err(err) => {
+            error!("Error: {:?}", err);
+            Err(ModuleExecutionError::Generic.into())
+        },
     }
 }
 

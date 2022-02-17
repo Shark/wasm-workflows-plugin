@@ -19,4 +19,4 @@ axum = "0.4.5"
 
 wasmtime = "0.34.1"
 wasmtime-wasi = "0.34.1"
-wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73" }
+wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73", features = ["async"]}
