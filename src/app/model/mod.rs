@@ -1,14 +1,16 @@
 use std::collections::HashMap;
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize, Debug)]
+#[allow(dead_code)]
 pub struct ExecuteTemplatePayload {
-    template: Template,
-    workflow: Workflow,
+    pub template: Template,
+    pub workflow: Workflow,
 }
 
 #[derive(Deserialize, Debug)]
-struct Template {
+#[allow(dead_code)]
+pub struct Template {
     inputs: Inputs,
     metadata: HashMap<String, String>,
     name: String,
@@ -17,46 +19,61 @@ struct Template {
 }
 
 #[derive(Deserialize, Debug)]
-struct Inputs {
+#[allow(dead_code)]
+pub struct Inputs {
     artifacts: Option<Vec<Artifact>>,
     parameters: Option<Vec<Parameter>>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Outputs {
+#[allow(dead_code)]
+pub struct Outputs {
     artifacts: Option<Vec<Artifact>>,
     parameters: Option<Vec<Parameter>>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Artifact {
+#[allow(dead_code)]
+pub struct Artifact {
     name: String,
     path: String,
     s3: Option<S3Artifact>,
 }
 
 #[derive(Deserialize, Debug)]
-struct S3Artifact {
+#[allow(dead_code)]
+pub struct S3Artifact {
     key: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct Parameter {
+#[allow(dead_code)]
+pub struct Parameter {
     name: String,
     value: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct Plugin {
+#[allow(dead_code)]
+pub struct Plugin {
     wasm: HashMap<String, String>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Workflow {
-    metadata: WorkflowMetadata,
+#[allow(dead_code)]
+pub struct Workflow {
+    pub metadata: WorkflowMetadata,
 }
 
 #[derive(Deserialize, Debug)]
-struct WorkflowMetadata {
-    name: String,
+#[allow(dead_code)]
+pub struct WorkflowMetadata {
+    pub name: String,
+}
+
+#[derive(Serialize, Debug)]
+#[allow(dead_code)]
+pub struct ExecuteTemplateResult {
+    pub phase: String,
+    pub message: String,
 }

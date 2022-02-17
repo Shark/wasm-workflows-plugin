@@ -8,9 +8,15 @@ edition = "2021"
 [dependencies]
 tracing = "0.1.30"
 tracing-subscriber = { version = "0.3.8", features = ["env-filter"] }
+anyhow = "1.0.53"
 
 tokio = { version = "1.17.0", features = ["full"] }
 serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
 tower-http = { version = "0.2.2", features = ["trace"] }
 
 axum = "0.4.5"
+
+wasmtime = "0.34.1"
+wasmtime-wasi = "0.34.1"
+wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73" }

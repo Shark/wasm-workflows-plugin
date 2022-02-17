@@ -1,0 +1,8 @@
+record invocation {
+  workflowname: string
+}
+record node {
+  phase: string,
+  message: string
+}
+invoke: function(ctx: invocation) -> node

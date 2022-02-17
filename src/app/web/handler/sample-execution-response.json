@@ -1,0 +1,14 @@
+{
+  "node": {
+    "phase": "Succeeded",
+    "message": "Hello template!",
+    "outputs": {
+      "parameters": [
+        {
+          "name": "message",
+          "value": "The Länd"
+        }
+      ]
+    }
+  }
+}
