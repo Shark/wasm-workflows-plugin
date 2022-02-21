@@ -13,6 +13,7 @@ pub async fn fetch_oci_image(name: &str, allowed_insecure: Vec<String>) -> anyho
         ..Default::default()
     };
     let mut oci_client = oci_distribution::Client::new(config);
+    // TODO add pull timeout
     let img_data = oci_client.pull(
         &img,
         &auth,

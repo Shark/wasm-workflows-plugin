@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
-pub struct ExecuteTemplatePayload {
+pub struct ExecuteTemplateRequest {
     pub template: Template,
     pub workflow: Workflow,
 }
@@ -56,7 +56,7 @@ pub struct Parameter {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Plugin {
-    pub wasm: WasmPluginConfig,
+    pub wasm: Option<WasmPluginConfig>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -76,6 +76,14 @@ pub struct Workflow {
 pub struct WorkflowMetadata {
     pub name: String,
 }
+
+#[derive(Serialize, Debug)]
+#[allow(dead_code)]
+pub struct ExecuteTemplateResponse {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node: Option<ExecuteTemplateResult>,
+}
+
 
 #[derive(Serialize, Debug)]
 #[allow(dead_code)]

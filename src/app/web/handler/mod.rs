@@ -1,16 +1,36 @@
+use axum::extract::Extension;
 use axum::http::{StatusCode};
 use axum::Json;
 use axum::response::{IntoResponse, Response};
 use tracing::{debug, error};
 use serde_json::json;
-use crate::app::model::{ExecuteTemplatePayload, ExecuteTemplateResult};
+use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse};
+use crate::app::config::DynConfigProvider;
 
-pub async fn execute_template(Json(payload): Json<ExecuteTemplatePayload>) -> Result<Json<ExecuteTemplateResult>, AppError> {
-    debug!("Payload: {:?}", payload);
+pub async fn execute_template(
+    Json(request): Json<ExecuteTemplateRequest>,
+    Extension(config_provider): Extension<DynConfigProvider>
+) -> Result<Json<ExecuteTemplateResponse>, AppError> {
+    debug!("Request: {:?}", request);
+    let insecure_oci_registries = config_provider.get().insecure_oci_registries.clone();
 
-    // TODO don't hardcode insecure registries
-    match crate::app::wasm::run(&payload.template, &payload.workflow, vec!["192.168.64.2:32000".to_string()]).await {
-        Ok(result) => Ok(result.into()),
+    let image = match request.template.plugin.wasm {
+        Some(config) => config.image,
+        None => {
+            return Ok(ExecuteTemplateResponse {
+                node: None,
+            }.into())
+        }
+    };
+
+    match crate::app::wasm::run(&image, &request.workflow.metadata.name, insecure_oci_registries).await {
+        Ok(result) => {
+            let response = ExecuteTemplateResponse {
+                node: Some(result),
+            };
+            debug!("Response: {:?}", response);
+            Ok(response.into())
+        },
         Err(err) => {
             error!("Error: {:?}", err);
             Err(ModuleExecutionError::Generic.into())

@@ -1,7 +1,6 @@
-use std::path::PathBuf;
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wasmtime::{Engine, Linker, Module, Store};
-use crate::app::model::{ExecuteTemplateResult, Template, Workflow};
+use crate::app::model::ExecuteTemplateResult;
 
 // https://github.com/bytecodealliance/wit-bindgen/pull/126
 wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"], async: ["invoke"]});
@@ -9,13 +8,13 @@ wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"], async: ["
 mod image;
 
 pub async fn run(
-    template: &Template,
-    workflow: &Workflow,
-    allowed_insecure: Vec<String>,
+    oci_image: &str,
+    workflow_name: &str,
+    insecure_oci_registries: Vec<String>,
 ) -> anyhow::Result<ExecuteTemplateResult> {
-    let (mut store, wf) = setup(&template.plugin.wasm.image, allowed_insecure).await?;
+    let (mut store, wf) = setup(oci_image, insecure_oci_registries).await?;
     let invocation = workflow::Invocation {
-        workflowname: &workflow.metadata.name,
+        workflowname: workflow_name,
     };
     let node = wf.invoke(&mut store, invocation).await?;
     Ok(ExecuteTemplateResult {
@@ -24,12 +23,12 @@ pub async fn run(
     })
 }
 
-async fn setup(oci_image_name: &str, allowed_insecure: Vec<String>) -> anyhow::Result<(
+async fn setup(oci_image_name: &str, insecure_oci_registries: Vec<String>) -> anyhow::Result<(
     Store<(WasiCtx, workflow::WorkflowData)>,
     workflow::Workflow<(WasiCtx, workflow::WorkflowData)>
 )> {
     // Pull module image, put into Vec<u8>
-    let module = image::fetch_oci_image(oci_image_name, allowed_insecure).await?;
+    let module = image::fetch_oci_image(oci_image_name, insecure_oci_registries).await?;
 
     // Setup wasmtime runtime
     let mut config = wasmtime::Config::new();

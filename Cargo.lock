@@ -259,6 +259,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
+name = "clap"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5f1fea81f183005ced9e59cdb01737ef2423956dac5a6d731b06b2ecfaa3467"
+dependencies = [
+ "atty",
+ "bitflags",
+ "clap_derive",
+ "indexmap",
+ "lazy_static",
+ "os_str_bytes",
+ "strsim",
+ "termcolor",
+ "textwrap",
+]
+
+[[package]]
+name = "clap_derive"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5fd1122e63869df2cb309f449da1ad54a7c6dfeb7c7e6ccd8e0825d9eb93bb72"
+dependencies = [
+ "heck 0.4.0",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -717,6 +747,12 @@ checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
 dependencies = [
  "unicode-segmentation",
 ]
+
+[[package]]
+name = "heck"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2540771e65fc8cb83cd6e8a237f70c319bd5c29f78ed1084ba5d50eeac86f7f9"
 
 [[package]]
 name = "hermit-abi"
@@ -1239,6 +1275,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "os_str_bytes"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e22443d1643a904602595ba1cd8f7d896afe56d26712531c5ff73a15b2fbf64"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "parking_lot"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1322,6 +1367,30 @@ name = "ppv-lite86"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "version_check 0.9.4",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check 0.9.4",
+]
 
 [[package]]
 name = "proc-macro2"
@@ -1715,6 +1784,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
+name = "strsim"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1781,6 +1856,12 @@ checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
 dependencies = [
  "winapi-util",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0066c8d12af8b5acd21e00547c3797fde4e8677254a7ee429176ccebbe93dd80"
 
 [[package]]
 name = "thiserror"
@@ -1923,9 +2004,9 @@ dependencies = [
 
 [[package]]
 name = "tower-http"
-version = "0.2.2"
+version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ed53e1fd082268841975cb39587fa9fca9a7a30da84f97818ef667c97f2872"
+checksum = "2bb284cac1883d54083a0edbdc9cabf931dfed87455f8c7266c01ece6394a43a"
 dependencies = [
  "bitflags",
  "bytes",
@@ -2254,6 +2335,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "clap",
  "oci-distribution",
  "serde",
  "serde_json",
@@ -2516,7 +2598,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0c36b9602eda8612e2338c4f39728046819b3bc2ed71a474c5c108f5b54e1f9"
 dependencies = [
  "anyhow",
- "heck",
+ "heck 0.3.3",
  "proc-macro2",
  "quote",
  "shellexpand",
@@ -2644,7 +2726,7 @@ name = "wit-bindgen-gen-rust"
 version = "0.1.0"
 source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
 dependencies = [
- "heck",
+ "heck 0.3.3",
  "wit-bindgen-gen-core",
 ]
 
@@ -2653,7 +2735,7 @@ name = "wit-bindgen-gen-wasmtime"
 version = "0.1.0"
 source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
 dependencies = [
- "heck",
+ "heck 0.3.3",
  "wit-bindgen-gen-core",
  "wit-bindgen-gen-rust",
 ]
