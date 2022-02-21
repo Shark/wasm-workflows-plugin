@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -15,26 +14,7 @@ pub struct Config {
     /// Comma-separated list of insecure OCI registry hosts
     #[clap(long = "insecure-oci-registries", env = "INSECURE_OCI_REGISTRIES", use_value_delimiter = true)]
     pub insecure_oci_registries: Vec<String>,
-}
 
-pub trait ConfigProvider {
-    fn get(&self) -> &Config;
-}
-
-pub type DynConfigProvider = Arc<dyn ConfigProvider + Send + Sync>;
-
-struct ClapConfigProvider {
-    config: Config,
-}
-
-pub fn initialize() -> DynConfigProvider {
-    Arc::new(ClapConfigProvider {
-        config: Config::parse(),
-    })
-}
-
-impl ConfigProvider for ClapConfigProvider {
-    fn get(&self) -> &Config {
-        &self.config
-    }
+    #[clap(long = "fs-cache-dir", env = "FS_CACHE_DIR")]
+    pub fs_cache_dir: Option<String>,
 }

@@ -3,10 +3,10 @@ use axum::{AddExtensionLayer, Router};
 use axum::routing::{get, post};
 use tower_http::trace::TraceLayer;
 use tower_http::set_header::SetRequestHeaderLayer;
-use crate::app::config::{DynConfigProvider};
+use crate::app::dependencies::DynDependencyProvider;
 use crate::app::web::handler;
 
-pub fn routes(config: DynConfigProvider) -> axum::Router {
+pub fn routes(deps: DynDependencyProvider) -> axum::Router {
     let template_execute = post(handler::execute_template)
         .layer(TraceLayer::new_for_http())
         // TODO remove SetRequestHeaderLayer once Argo sends correct Content-Type header
@@ -14,7 +14,7 @@ pub fn routes(config: DynConfigProvider) -> axum::Router {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         ))
-        .layer(AddExtensionLayer::new(config));
+        .layer(AddExtensionLayer::new(deps));
 
     Router::new()
         .route("/healthz", get(|| async { "ok\n" }))

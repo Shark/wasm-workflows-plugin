@@ -4,16 +4,16 @@ use axum::Json;
 use axum::response::{IntoResponse, Response};
 use tracing::{debug, error};
 use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, PHASE_FAILED};
-use crate::app::config::DynConfigProvider;
+use crate::app::dependencies::DynDependencyProvider;
 use crate::app::wasm;
 use crate::app::wasm::WasmError;
 
 pub async fn execute_template(
     Json(request): Json<ExecuteTemplateRequest>,
-    Extension(config_provider): Extension<DynConfigProvider>
+    Extension(deps): Extension<DynDependencyProvider>
 ) -> Result<Json<ExecuteTemplateResponse>, AppError> {
     debug!("Request: {:?}", request);
-    let insecure_oci_registries = config_provider.get().insecure_oci_registries.clone();
+    let insecure_oci_registries = deps.get_config().insecure_oci_registries.clone();
 
     let image = match request.template.plugin.wasm {
         Some(config) => config.image,
@@ -50,7 +50,7 @@ pub async fn execute_template(
         plugin_options: &Vec::new(), // TODO fill
     };
 
-    match wasm::run(&image, invocation, insecure_oci_registries).await {
+    match wasm::run(deps.get_wasm_engine(), deps.get_module_cache(), &image, invocation, insecure_oci_registries).await {
         Ok(result) => {
             let response = ExecuteTemplateResponse {
                 node: Some(result),
@@ -86,6 +86,8 @@ impl IntoResponse for AppError {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module output processing failed"),
             AppError::ModuleExecution(WasmError::Retrieve(_err)) =>
                 (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module could not be retrieved"),
+            AppError::ModuleExecution(WasmError::Precompile(_)) =>
+                (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module could not be precompiled"),
         };
 
         let response = Json(ExecuteTemplateResponse {

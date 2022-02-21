@@ -1,5 +1,6 @@
 use std::net::{IpAddr,SocketAddr};
 use std::str::FromStr;
+use anyhow::anyhow;
 use tracing::Level;
 use tracing_subscriber::{filter, FmtSubscriber, prelude::__tracing_subscriber_SubscriberExt};
 
@@ -20,13 +21,15 @@ async fn main() -> anyhow::Result<()> {
 
     tracing::subscriber::set_global_default(subscriber).expect("set default subscriber");
 
-    let config_provider = app::config::initialize();
-    let config = config_provider.get();
+    let deps = app::dependencies::initialize().map_err(
+        |err| anyhow!(err).context("Initializing dependencies failed")
+    )?;
+    let config = deps.get_config();
     let bind_ip = config.bind_ip.clone();
     let bind_port = config.bind_port.clone();
     tracing::debug!("Loaded Config: {:?}", config);
 
-    let app = app::web::router::routes(config_provider);
+    let app = app::web::router::routes(deps);
 
     let ip_addr = IpAddr::from_str(&bind_ip)
         .map_err(|err|
@@ -34,6 +37,7 @@ async fn main() -> anyhow::Result<()> {
         )?;
     let addr = SocketAddr::new(ip_addr, bind_port);
     tracing::info!("Listening on {}", addr);
+    // TODO Add signal handler
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await

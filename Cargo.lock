@@ -2336,6 +2336,7 @@ dependencies = [
  "anyhow",
  "axum",
  "clap",
+ "itertools",
  "oci-distribution",
  "serde",
  "serde_json",
@@ -2346,6 +2347,7 @@ dependencies = [
  "wasmtime",
  "wasmtime-wasi",
  "wit-bindgen-wasmtime",
+ "zstd",
 ]
 
 [[package]]

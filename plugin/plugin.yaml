@@ -17,9 +17,12 @@ spec:
           port: 3000
         initialDelaySeconds: 2
         periodSeconds: 1
+      env:
+      - name: INSECURE_OCI_REGISTRIES
+        value: 192.168.64.2:32000
       securityContext:
         runAsNonRoot: true
-        runAsUser: 65534 # nobody
+        runAsUser: 65532 # nonroot
       resources:
         requests:
           memory: "64Mi"

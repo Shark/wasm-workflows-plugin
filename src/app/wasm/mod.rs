@@ -1,24 +1,39 @@
 use anyhow::{anyhow, Error};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use wasmtime::{Engine, Linker, Module, Store};
+pub use workflow::{Invocation, ParameterParam};
 use crate::app::model::{ExecuteTemplateResult, Outputs, Parameter};
-
+use crate::app::wasm::cache::ModuleCache;
 // https://github.com/bytecodealliance/wit-bindgen/pull/126
 wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"], async: ["invoke"]});
 
 mod image;
-pub use workflow::Invocation;
-pub use workflow::ParameterParam;
+pub mod cache;
 
 pub async fn run(
+    engine: &wasmtime::Engine,
+    cache: &Box<dyn ModuleCache + Send + Sync>,
     oci_image: &str,
     invocation: workflow::Invocation<'_>,
     insecure_oci_registries: Vec<String>,
 ) -> anyhow::Result<ExecuteTemplateResult, WasmError> {
-    let module = pull(oci_image, insecure_oci_registries).await.map_err(
-        |err| WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
+    let mut module: Option<Vec<u8>> = cache.get(oci_image).map_err(
+        |err| WasmError::EnvironmentSetup(anyhow!(err).context("Checking Wasm module cache failed"))
     )?;
-    let (mut store, wf) = setup(module).await.map_err(
+    if module.is_none() {
+        let pulled_mod = pull(oci_image, insecure_oci_registries).await.map_err(
+            |err| WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
+        )?;
+        let precompiled_mod = engine.precompile_module(&pulled_mod).map_err(
+            |err| WasmError::Precompile(anyhow!(err).context("Wasm module precompilation failed"))
+        )?;
+        let _ = cache.put(oci_image, &precompiled_mod).map_err(
+            |err| WasmError::Retrieve(anyhow!(err).context("Storing Wasm module in cache failed"))
+        )?;
+        module = Some(precompiled_mod);
+    }
+
+    let (mut store, wf) = setup(engine, module.unwrap()).await.map_err(
         |err| WasmError::EnvironmentSetup(anyhow!(err).context("Wasm module invocation failed"))
     )?;
     let node = wf.invoke(&mut store, invocation).await.map_err(
@@ -57,17 +72,21 @@ async fn pull(oci_image_name: &str, insecure_oci_registries: Vec<String>) -> any
         .map_err(|err| anyhow!(err).context("Could not fetch Wasm OCI image"))
 }
 
-async fn setup(module: Vec<u8>) -> anyhow::Result<(
+pub fn setup_engine() -> anyhow::Result<wasmtime::Engine> {
+    let mut config = wasmtime::Config::new();
+    let config = config.async_support(true);
+    Engine::new(config)
+}
+
+async fn setup(engine: &wasmtime::Engine,
+               module: Vec<u8>) -> anyhow::Result<(
     Store<(WasiCtx, workflow::WorkflowData)>,
     workflow::Workflow<(WasiCtx, workflow::WorkflowData)>
 )> {
-    // Setup wasmtime runtime
-    let mut config = wasmtime::Config::new();
-    let config = config.async_support(true);
-    let engine = Engine::new(config)?;
-    let module = Module::from_binary(&engine, &module)?;
+    let module = unsafe { Module::deserialize(engine, module) }?;
     let mut linker = Linker::new(&engine);
     let _ = wasmtime_wasi::add_to_linker(&mut linker, |(wasi, _plugin_data)| wasi)?;
+    // TODO Remove stdio & args
     let wasi = WasiCtxBuilder::new().inherit_stdio().inherit_args()?.build();
     let mut store = Store::new(&engine, (wasi, workflow::WorkflowData {}));
 
@@ -82,6 +101,7 @@ async fn setup(module: Vec<u8>) -> anyhow::Result<(
 pub enum WasmError {
     EnvironmentSetup(Error),
     Retrieve(Error),
+    Precompile(Error),
     Invocation(Error),
     OutputProcessing(Error),
 }
