@@ -3,10 +3,10 @@ use axum::http::{StatusCode};
 use axum::Json;
 use axum::response::{IntoResponse, Response};
 use tracing::{debug, error};
-use serde_json::json;
-use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, Parameter};
+use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, PHASE_FAILED};
 use crate::app::config::DynConfigProvider;
 use crate::app::wasm;
+use crate::app::wasm::WasmError;
 
 pub async fn execute_template(
     Json(request): Json<ExecuteTemplateRequest>,
@@ -60,17 +60,17 @@ pub async fn execute_template(
         },
         Err(err) => {
             error!("Error: {:?}", err);
-            Err(ModuleExecutionError::Generic.into())
+            Err(err.into())
         },
     }
 }
 
 pub enum AppError {
-    ModuleExecution(ModuleExecutionError),
+    ModuleExecution(WasmError),
 }
 
-impl From<ModuleExecutionError> for AppError {
-    fn from(inner: ModuleExecutionError) -> Self {
+impl From<WasmError> for AppError {
+    fn from(inner: WasmError) -> Self {
         AppError::ModuleExecution(inner)
     }
 }
@@ -78,21 +78,26 @@ impl From<ModuleExecutionError> for AppError {
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AppError::ModuleExecution(ModuleExecutionError::Generic) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Module Execution Failed")
-            }
+            AppError::ModuleExecution(WasmError::EnvironmentSetup(_err)) =>
+                (StatusCode::INTERNAL_SERVER_ERROR, "Wasm environment is not set up correctly"),
+            AppError::ModuleExecution(WasmError::Invocation(_err)) =>
+                (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module invocation failed"),
+            AppError::ModuleExecution(WasmError::OutputProcessing(_err)) =>
+                (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module output processing failed"),
+            AppError::ModuleExecution(WasmError::Retrieve(_err)) =>
+                (StatusCode::INTERNAL_SERVER_ERROR, "Wasm module could not be retrieved"),
         };
 
-        let body = Json(json!({
-            "error": error_message,
-        }));
+        let response = Json(ExecuteTemplateResponse {
+            node: Some(ExecuteTemplateResult {
+                phase: PHASE_FAILED.to_string(),
+                message: error_message.to_string(),
+                outputs: None
+            }),
+        });
 
-        (status, body).into_response()
+        (status, response).into_response()
     }
-}
-
-pub enum ModuleExecutionError {
-    Generic
 }
 
 struct Param {

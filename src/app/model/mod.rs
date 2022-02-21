@@ -90,6 +90,11 @@ pub struct ExecuteTemplateResponse {
     pub node: Option<ExecuteTemplateResult>,
 }
 
+/// A successful plugin invocation
+pub const PHASE_SUCCEEDED: &str = "Succeeded";
+
+/// A failed plugin invocation
+pub const PHASE_FAILED: &str = "Failed";
 
 #[derive(Serialize, Debug)]
 #[allow(dead_code)]
