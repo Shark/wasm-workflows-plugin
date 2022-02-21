@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ExecutorPlugin
+metadata:
+  name: wasm
+  namespace: argo-workflows
+spec:
+  sidecar:
+    container:
+      # image: docker-registry.default.svc.cluster.local/wasm-workflow-executor:latest
+      image: 192.168.64.2:32000/wasm-workflow-executor:latest
+      name: wasm-workflow-executor
+      ports:
+      - containerPort: 3000
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 3000
+        initialDelaySeconds: 2
+        periodSeconds: 1
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534 # nobody
+      resources:
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"

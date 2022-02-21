@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: wasm-
+spec:
+  entrypoint: wasm
+  templates:
+    - name: wasm
+      plugin:
+        wasm:
+          image: 192.168.64.2:32000/demo_mod:latest
