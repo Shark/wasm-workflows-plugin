@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
+use serde_json::Value;
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
@@ -25,32 +26,35 @@ pub struct Inputs {
     pub parameters: Option<Vec<Parameter>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Outputs {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub artifacts: Option<Vec<Artifact>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Vec<Parameter>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Artifact {
     pub name: String,
     pub path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3Artifact>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct S3Artifact {
     pub key: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Parameter {
     pub name: String,
-    pub value: String,
+    pub value: serde_json::Value,
 }
 
 #[derive(Deserialize, Debug)]
@@ -63,6 +67,8 @@ pub struct Plugin {
 #[allow(dead_code)]
 pub struct WasmPluginConfig {
     pub image: String,
+    #[serde(flatten)]
+    pub extra: HashMap<String, Value>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -90,4 +96,6 @@ pub struct ExecuteTemplateResponse {
 pub struct ExecuteTemplateResult {
     pub phase: String,
     pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outputs: Option<Outputs>,
 }
