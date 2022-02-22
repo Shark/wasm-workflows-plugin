@@ -5,6 +5,7 @@ use axum::response::{IntoResponse, Response};
 use tracing::{debug, error};
 use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, PHASE_FAILED};
 use crate::app::dependencies::DynDependencyProvider;
+use crate::app::model::ModuleSource::OCI;
 use crate::app::wasm;
 use crate::app::wasm::WasmError;
 
@@ -15,13 +16,17 @@ pub async fn execute_template(
     debug!("Request: {:?}", request);
     let insecure_oci_registries = deps.get_config().insecure_oci_registries.clone();
 
-    let image = match request.template.plugin.wasm {
-        Some(config) => config.image,
+    let module_source = match request.template.plugin.wasm {
+        Some(config) => config.module,
         None => {
             return Ok(ExecuteTemplateResponse {
                 node: None,
             }.into())
         }
+    };
+
+    let image = match module_source {
+        OCI(image) => image,
     };
 
     let mut in_params: Vec<Parameter> = Vec::new();

@@ -66,9 +66,16 @@ pub struct Plugin {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct WasmPluginConfig {
-    pub image: String,
+    pub module: ModuleSource,
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub enum ModuleSource {
+    #[serde(rename = "oci")]
+    OCI(String)
 }
 
 #[derive(Deserialize, Debug)]

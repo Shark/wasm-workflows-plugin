@@ -8,4 +8,5 @@ spec:
     - name: wasm
       plugin:
         wasm:
-          image: 192.168.64.2:32000/demo_mod:latest
+          module:
+            oci: 192.168.64.2:32000/demo_mod:latest
