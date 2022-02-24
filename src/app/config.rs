@@ -17,4 +17,10 @@ pub struct Config {
 
     #[clap(long = "fs-cache-dir", env = "FS_CACHE_DIR")]
     pub fs_cache_dir: Option<String>,
+
+    #[clap(long = "debug", env = "DEBUG")]
+    pub debug: bool,
+
+    #[clap(long = "enable-telemetry", env = "OTEL_ENABLE")]
+    pub enable_telemetry: bool,
 }

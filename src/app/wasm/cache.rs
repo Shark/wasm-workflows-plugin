@@ -19,6 +19,7 @@ pub fn new_fs_cache(base_dir: PathBuf) -> FSCache {
     }
 }
 
+#[derive(Debug)]
 pub struct FSCache {
     base_dir: PathBuf
 }
@@ -36,6 +37,7 @@ impl FSCache {
 impl ModuleCache for FSCache {
     // TODO Add concurrency control or switch to using wasmtime-cache crate
 
+    #[tracing::instrument(name = "fscache.get")]
     fn get(&self, image: &str) -> Result<Option<Vec<u8>>> {
         let image = FSCache::canonical_name(image);
         let path = self.base_dir.join(image);
@@ -54,6 +56,7 @@ impl ModuleCache for FSCache {
         Ok(Some(buf))
     }
 
+    #[tracing::instrument(name = "fscache.put")]
     fn put(&self, image: &str, data: &[u8]) -> Result<()> {
         let image = FSCache::canonical_name(image);
         let path = self.base_dir.join(image);
@@ -63,6 +66,7 @@ impl ModuleCache for FSCache {
     }
 
     // TODO Add tokio task for running cache purge
+    #[tracing::instrument(name = "fscache.purge")]
     fn purge(&self, max_size_mib: u64) -> Result<()> {
         let paths = fs::read_dir(&self.base_dir)?;
         // paths.collect::<Result<Vec<_>, _>>()?
