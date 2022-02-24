@@ -1,6 +1,7 @@
 use std::net::{IpAddr,SocketAddr};
 use std::str::FromStr;
 use anyhow::anyhow;
+use tokio::signal;
 use crate::app::tracing as app_tracing;
 
 pub mod app;
@@ -29,8 +30,36 @@ async fn main() -> anyhow::Result<()> {
     // TODO Add signal handler
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(graceful_shutdown())
         .await
         .expect("start server");
 
     Ok(())
+}
+
+// From https://github.com/tokio-rs/axum/blob/616a43a/examples/graceful-shutdown/src/main.rs
+async fn graceful_shutdown() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+        let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    tracing::warn!("Signal received, shutting down gracefully");
 }
