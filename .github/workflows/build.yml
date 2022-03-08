@@ -1,0 +1,26 @@
+name: Build the code
+on:
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check
+    - name: cargo build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --release
+    - name: Upload executable
+      uses: actions/upload-artifact@v2.3.1
+      with:
+        name: bin
+        path: target/release/wasm-workflow-executor
+        retention-days: 7

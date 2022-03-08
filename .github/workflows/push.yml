@@ -1,0 +1,11 @@
+name: Build on push
+on:
+  push:
+    # Run for any branch, but not for tags
+    branches:
+    - '*'
+    tags-ignore:
+    - '*'
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
