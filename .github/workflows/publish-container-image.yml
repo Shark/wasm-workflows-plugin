@@ -1,0 +1,36 @@
+name: Publish the container image
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: shark/wasm-workflow-executor
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download container image artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: container-image
+        path: /tmp
+
+    - name: Import container image
+      run: docker load -i /tmp/container-image.tar.bz2
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # https://github.com/docker/login-action/tree/v1.14.1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push Docker image
+      run: |
+        docker tag sh4rk/wasm-workflow-executor:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
+        docker tag sh4rk/wasm-workflow-executor:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
+        docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

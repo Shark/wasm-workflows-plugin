@@ -1,0 +1,16 @@
+name: Check the code
+on:
+  workflow_call:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - uses: Swatinem/rust-cache@f8f67b7515e98e4ac991ccb5c11240861e0f712b # https://github.com/Swatinem/rust-cache/tree/v1
+    - name: cargo check
+      uses: actions-rs/cargo@v1
+      with:
+        command: check

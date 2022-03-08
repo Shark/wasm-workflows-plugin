@@ -1,0 +1,35 @@
+name: Release on tag
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  build:
+    uses: ./.github/workflows/build-container-image.yml
+  publish:
+    uses: ./.github/workflows/publish-container-image.yml
+    needs: [build]
+    with:
+      version: ${{ needs.build.outputs.version }}
+  changelog:
+    uses: ./.github/workflows/create-changelog.yml
+  release:
+    runs-on: ubuntu-latest
+    needs: [publish, changelog]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        path: repo
+        fetch-depth: 0
+    - name: Create release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.changelog.outputs.tag }}
+        release_name: Release ${{ needs.changelog.outputs.tag }}
+        draft: false
+        prerelease: true
+        body: ${{ needs.changelog.outputs.changelog }}

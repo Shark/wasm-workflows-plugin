@@ -7,5 +7,5 @@ on:
     tags-ignore:
     - '*'
 jobs:
-  build:
-    uses: ./.github/workflows/build.yml
+  check:
+    uses: ./.github/workflows/check.yml

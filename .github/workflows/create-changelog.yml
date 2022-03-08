@@ -1,0 +1,33 @@
+name: Create the changelog since the last release
+on:
+  workflow_call:
+    outputs:
+      changelog:
+        description: List of commits since the last release
+        value: ${{ jobs.build.outputs.changelog }}
+      tag:
+        description: Git tag that the changelog belongs to
+        value: ${{ jobs.build.outputs.tag }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+      tag: ${{ steps.changelog.outputs.tag }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Generate changelog from git
+      id: changelog
+      run: |
+        PREVIOUS_TAG=$(git tag --list | sort -r | sed -n 2p)
+        [ -z "$PREVIOUS_TAG" ] && PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD) # fallback to first commit
+        CHANGELOG=$(git log --pretty=format:"%s" --no-merges $PREVIOUS_TAG..HEAD)
+        # escape as per https://github.community/t5/GitHub-Actions/set-output-Truncates-Multiline-Strings/td-p/37870
+        CHANGELOG="${CHANGELOG//'%'/'%25'}"
+        CHANGELOG="${CHANGELOG//$'\n'/'%0A'}"
+        CHANGELOG="${CHANGELOG//$'\r'/'%0D'}"
+        echo "::set-output name=changelog::$CHANGELOG"
+        echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
