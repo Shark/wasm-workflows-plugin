@@ -1,0 +1,2 @@
+{"rule":"EN_A_VS_AN","sentence":"^\\Q\\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q takes an \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q record and returns a \\E(?:Dummy|Ina|Jimmy-)[0-9]+\\Q record (you can think of records as a structure holding some data).\\E$"}
+{"rule":"MORFOLOGIK_RULE_EN_US","sentence":"^\\QOther viable options include the WebAssembly package manager WAPM that already serves WASI-compatible Wasm modules.\\E$"}

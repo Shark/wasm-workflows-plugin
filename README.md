@@ -133,22 +133,80 @@ metadata:
   generateName: wasm-
 spec:
   entrypoint: wasm
+  arguments:
+    parameters:
+      - name: text
+        value: Hello World from WebAssembly
   templates:
     - name: wasm
+      inputs:
+        parameters:
+          - name: text
       plugin:
         wasm:
           module:
-            oci: 192.168.64.2:32000/demo_mod:latest
+            oci: ghcr.io/shark/wasm-workflow-executor-example-ferris-says:latest
+```
+
+The `wasm` template will produce an output parameter `text` with an awesome message:
+
+```
+ ___________________
+/ "Hello World from \
+\ WebAssembly"      /
+ -------------------
+        \
+         \
+            _~^~^~_
+        \) /  o o  \ (/
+          '_   -   _'
+          / '-----' \
 ```
 
 Input and output parameters between workflow steps work just like you'd expect. Other features like artifacts may still be on the [roadmap](#roadmap) though, which is advised to check for your use case.
 
+### Module Development
+
+Creating a new Wasm module is easy. All your module must do is implement the [WebAssembly Interface Types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) contract. You find this contract at [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit).
+
+```
+invoke: function(ctx: invocation) -> node
+```
+
+The contract defines one function `invoke` that the module must implement. `invoke` takes an `invocation` record and returns a `node` record (you can think of records as a structure holding some data). Most importantly, `invocation` holds the input parameters. `node` can specify whether the module executed successfully, provide a result message and can optionally return a list of output parameters.
+
+This repo contains a [ready-to-use template for Rust](modules/templates/rust/).
+
+### :construction: Capabilities
+
+Capabilities expand what modules can do. Without them, modules can take input parameters and artifacts and produce some output.
+
+Some [inspiration for capabilities](https://wasmcloud.dev/reference/host-runtime/capabilities/) can be taken from the wasmCloud project. Currently, this executor does not offer any capabilities, but I want to port some of wasmCloud's capability providers over to enable a wide range of stateful use cases like HTTP/REST, S3 object storage, SQL databases, etc.
+
+### :construction: Distributed Mode
+
+Right now, all Wasm modules run in the plugin context -- in a single container This is fine for many use cases because Argo creates a new plugin context for every workflow instance. But the scaling is limited to a single node. For a full showcase of the vision of Cloud-Native WebAssembly, the workload should of course be distributed.
+
+### :construction: Module Source
+
+There is not a single idea of how Wasm modules can be distributed. There are a lot of practical options because of their comparably small size. In Cloud-Native, OCI/Docker registries are a natural fit since they're required anyway for container images. Other viable options include the [WebAssembly package manager WAPM](https://wapm.io) that already serves WASI-compatible Wasm modules. Moreover, the [Bindle](https://github.com/deislabs/bindle) project is another alternative that provides a modern infrastructure for distributing applications as a bunch of independent bundles with well-defined relationships between each of them.
+
+Currently, this project only supports OCI registries and the format created by the [`wasm-to-oci`](https://github.com/engineerd/wasm-to-oci) tool (see [roadmap](#roadmap)). Other module sources can be represented in the invocation format without issue however:
+
+```yaml
+- name: wasm
+  plugin:
+    wasm:
+      module:
+        # you would use one of these options
+        oci: ghcr.io/someone/somemodule:latest    # already supported
+        wapm: syrusakbary/qr2text@0.0.1           # on the roadmap
+        bindle: example.com/stuff/mybindle/v1.2.3 # on the roadmap
+```
+
 ## Roadmap
 
 - [ ] **Distributed Mode**
-
-  Right now, all Wasm modules run in the plugin context. This is fine for many use cases because Argo creates a new plugin context for every workflow instance. But the scaling is limited to a single node and this is not the full vision how I intend Cloud-Native Wasm to work.
-
 - [ ] Create ready-to-use modules for demo (cowsay), and then image/text processing
 - [ ] Support input + output artifacts
 - [ ] Support WASI fallback mode for compatibility with languages without [interface types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) library support

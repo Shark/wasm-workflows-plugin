@@ -14,7 +14,7 @@ This is a toy example which mimicks the one of the [official examples in the Arg
           / '-----' \
 ```
 
-You'll find a sample workflow in [`workflow.yaml`](workflow.yaml). The module expects an input parameter `text` and produces an output parameter of the same name.
+You'll find a sample workflow in [`workflow.yaml`](workflow.yaml). The module expects an input parameter `text` and produces an output parameter of the same name. The Wasm module is a public package on GitHub's Container Registry (ghcr.io), so you don't need to build or publish anything.
 
 ## Developing
 

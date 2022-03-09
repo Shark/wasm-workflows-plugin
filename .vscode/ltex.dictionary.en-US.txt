@@ -1,1 +1,3 @@
 denylist
+wasmCloud
+Bindle
