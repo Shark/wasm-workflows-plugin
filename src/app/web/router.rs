@@ -1,10 +1,10 @@
-use axum::http::{header, HeaderValue};
-use axum::{AddExtensionLayer, Router};
-use axum::routing::{get, post};
-use tower_http::trace::TraceLayer;
-use tower_http::set_header::SetRequestHeaderLayer;
 use crate::app::dependencies::DynDependencyProvider;
 use crate::app::web::handler;
+use axum::http::{header, HeaderValue};
+use axum::routing::{get, post};
+use axum::{AddExtensionLayer, Router};
+use tower_http::set_header::SetRequestHeaderLayer;
+use tower_http::trace::TraceLayer;
 
 pub fn routes(deps: DynDependencyProvider) -> axum::Router {
     let template_execute = post(handler::execute_template)

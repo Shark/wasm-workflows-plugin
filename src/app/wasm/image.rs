@@ -6,27 +6,28 @@ pub async fn fetch_oci_image(name: &str, allowed_insecure: Vec<String>) -> anyho
     // TODO add auth support
     let img = oci_distribution::Reference::from_str(name)?;
     let auth = oci_distribution::secrets::RegistryAuth::Anonymous;
-    let protocol =
-        oci_distribution::client::ClientProtocol::HttpsExcept(allowed_insecure.to_vec());
+    let protocol = oci_distribution::client::ClientProtocol::HttpsExcept(allowed_insecure.to_vec());
     let config = oci_distribution::client::ClientConfig {
         protocol,
         ..Default::default()
     };
     let mut oci_client = oci_distribution::Client::new(config);
     // TODO add pull timeout
-    let img_data = oci_client.pull(
-        &img,
-        &auth,
-        vec![
-            "application/vnd.module.wasm.content.layer.v1+wasm",
-            "application/vnd.wasm.content.layer.v1+wasm",
-            "application/vnd.oci.image.layer.v1.tar"
-    ]).await?;
+    let img_data = oci_client
+        .pull(
+            &img,
+            &auth,
+            vec![
+                "application/vnd.module.wasm.content.layer.v1+wasm",
+                "application/vnd.wasm.content.layer.v1+wasm",
+                "application/vnd.oci.image.layer.v1.tar",
+            ],
+        )
+        .await?;
     let content = img_data
         .layers
         .iter()
-        .map(|l| l.data.clone())
-        .flatten()
+        .flat_map(|l| l.data.clone())
         .collect::<Vec<_>>();
 
     Ok(content)

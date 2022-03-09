@@ -1,5 +1,5 @@
-use std::io::BufWriter;
 use anyhow::anyhow;
+use std::io::BufWriter;
 
 wit_bindgen_rust::export!("../../../src/app/wasm/workflow.wit");
 
@@ -19,30 +19,33 @@ impl workflow::Workflow for Workflow {
     fn invoke(ctx: workflow::Invocation) -> workflow::Node {
         match Workflow::run(ctx) {
             Ok(result) => {
-                let out_params: Vec<workflow::Parameter> = result.parameters.into_iter().map(
-                    |param| workflow::Parameter {
+                let out_params: Vec<workflow::Parameter> = result
+                    .parameters
+                    .into_iter()
+                    .map(|param| workflow::Parameter {
                         name: param.name,
                         value_json: param.value.to_string(),
-                    }
-                ).collect();
+                    })
+                    .collect();
                 workflow::Node {
                     phase: "Succeeded".to_string(),
                     message: result.message,
                     parameters: out_params,
                 }
-            },
+            }
             Err(err) => workflow::Node {
                 phase: "Failed".to_string(),
                 message: err.to_string(),
                 parameters: vec![],
-            }
+            },
         }
     }
 }
 
 impl Workflow {
     fn run(ctx: workflow::Invocation) -> anyhow::Result<ModuleResult> {
-        let maybe_input_text = ctx.parameters
+        let maybe_input_text = ctx
+            .parameters
             .into_iter()
             .find(|param| param.name == "text")
             .and_then(|param| Some(param.value_json));
@@ -57,12 +60,10 @@ impl Workflow {
         let output_text = String::from_utf8(bytes)?;
         return Ok(ModuleResult {
             message: "Conversion successful".to_string(),
-            parameters: vec![
-                Parameter {
-                    name: "text".to_string(),
-                    value: output_text.into(),
-                }
-            ]
-        })
+            parameters: vec![Parameter {
+                name: "text".to_string(),
+                value: output_text.into(),
+            }],
+        });
     }
 }

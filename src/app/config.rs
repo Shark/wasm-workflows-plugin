@@ -12,7 +12,11 @@ pub struct Config {
     pub bind_port: u16,
 
     /// Comma-separated list of insecure OCI registry hosts
-    #[clap(long = "insecure-oci-registries", env = "INSECURE_OCI_REGISTRIES", use_value_delimiter = true)]
+    #[clap(
+        long = "insecure-oci-registries",
+        env = "INSECURE_OCI_REGISTRIES",
+        use_value_delimiter = true
+    )]
     pub insecure_oci_registries: Vec<String>,
 
     #[clap(long = "fs-cache-dir", env = "FS_CACHE_DIR")]

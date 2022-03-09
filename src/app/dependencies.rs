@@ -1,9 +1,9 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use clap::Parser;
-use wasmtime::Engine;
 use crate::app::config::Config;
 use crate::app::wasm::{self, cache, cache::ModuleCache};
+use clap::Parser;
+use std::path::PathBuf;
+use std::sync::Arc;
+use wasmtime::Engine;
 
 pub trait DependencyProvider {
     fn get_config(&self) -> &Config;

@@ -1,16 +1,15 @@
-use std::net::{IpAddr,SocketAddr};
-use std::str::FromStr;
-use anyhow::anyhow;
-use tokio::signal;
 use crate::app::tracing as app_tracing;
+use anyhow::anyhow;
+use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
+use tokio::signal;
 
 pub mod app;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let deps = app::dependencies::initialize().map_err(
-        |err| anyhow!(err).context("Initializing dependencies failed")
-    )?;
+    let deps = app::dependencies::initialize()
+        .map_err(|err| anyhow!(err).context("Initializing dependencies failed"))?;
     let config = deps.get_config();
 
     app_tracing::setup(config.debug, config.enable_telemetry).expect("setup tracing");
@@ -21,10 +20,9 @@ async fn main() -> anyhow::Result<()> {
 
     let app = app::web::router::routes(deps);
 
-    let ip_addr = IpAddr::from_str(&bind_ip)
-        .map_err(|err|
-            anyhow::Error::new(err).context(format!("Failed to parse IP \"{}\"", bind_ip))
-        )?;
+    let ip_addr = IpAddr::from_str(&bind_ip).map_err(|err| {
+        anyhow::Error::new(err).context(format!("Failed to parse IP \"{}\"", bind_ip))
+    })?;
     let addr = SocketAddr::new(ip_addr, bind_port);
     tracing::info!("Listening on {}", addr);
     // TODO Add signal handler
@@ -40,13 +38,11 @@ async fn main() -> anyhow::Result<()> {
 // From https://github.com/tokio-rs/axum/blob/616a43a/examples/graceful-shutdown/src/main.rs
 async fn graceful_shutdown() {
     let ctrl_c = async {
-        signal::ctrl_c()
-            .await
-            .expect("install Ctrl+C handler");
+        signal::ctrl_c().await.expect("install Ctrl+C handler");
     };
 
     #[cfg(unix)]
-        let terminate = async {
+    let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("install signal handler")
             .recv()
@@ -54,7 +50,7 @@ async fn graceful_shutdown() {
     };
 
     #[cfg(not(unix))]
-        let terminate = std::future::pending::<()>();
+    let terminate = std::future::pending::<()>();
 
     tokio::select! {
         _ = ctrl_c => {},

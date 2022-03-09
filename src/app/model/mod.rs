@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
@@ -75,7 +75,7 @@ pub struct WasmPluginConfig {
 #[allow(dead_code)]
 pub enum ModuleSource {
     #[serde(rename = "oci")]
-    OCI(String)
+    OCI(String),
 }
 
 #[derive(Deserialize, Debug)]
