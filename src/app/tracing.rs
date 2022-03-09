@@ -13,7 +13,7 @@ pub fn setup(debug: bool, enable_telemetry: bool) -> anyhow::Result<()> {
         true => filter
             .add_directive("tower_http=debug".parse().expect("parse directive"))
             .add_directive(
-                "wasm_workflow_executor=debug"
+                "wasm_workflows_plugin=debug"
                     .parse()
                     .expect("parse directive"),
             ),
@@ -46,7 +46,7 @@ fn telemetry() -> anyhow::Result<
     >,
 > {
     let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name("wasm-workflow-executor")
+        .with_service_name("wasm-workflows-plugin")
         .install_simple()
         .map_err(|err| anyhow!(err).context("opentelemetry_jaeger setup failed"))?;
 

@@ -6,8 +6,8 @@ metadata:
 spec:
   sidecar:
     container:
-      image: ghcr.io/shark/wasm-workflow-executor:v0.1.0
-      name: wasm-workflow-executor
+      image: ghcr.io/shark/wasm-workflows-plugin:v0.1.0
+      name: wasm-workflows-plugin
       ports:
       - containerPort: 3000
       livenessProbe:

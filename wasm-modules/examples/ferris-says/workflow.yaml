@@ -16,4 +16,4 @@ spec:
       plugin:
         wasm:
           module:
-            oci: ghcr.io/shark/wasm-workflow-executor-example-ferris-says:latest
+            oci: ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest

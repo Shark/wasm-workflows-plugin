@@ -20,4 +20,4 @@ docker run --name jaeger \
   jaegertracing/all-in-one:latest
 ```
 
-Open [http://localhost:16686](http://localhost:16686) and search for traces by the _service_ `wasm-workflow-executor`.
+Open [http://localhost:16686](http://localhost:16686) and search for traces by the _service_ `wasm-workflows-plugin`.

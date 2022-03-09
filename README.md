@@ -3,18 +3,18 @@
 
 <br />
 <div align="center">
-  <h3 align="center">wasm-workflow-executor</h3>
+  <h3 align="center">wasm-workflows-plugin</h3>
 
   <p align="center">
     An <a href="https://github.com/argoproj/argo-workflows/blob/master/docs/executor_plugins.md">Executor Plugin</a> for <a href="https://argoproj.github.io/argo-workflows/">Argo Workflows</a> that runs WebAssembly modules! 🚀
     <br />
-    <a href="https://github.com/Shark/wasm-workflow-executor/#about-the-project"><strong>Find out why that's awesome »</strong></a>
+    <a href="https://github.com/Shark/wasm-workflows-plugin/#about-the-project"><strong>Find out why that's awesome »</strong></a>
     <!--
     <br />
     <br />
-    <a href="https://github.com/Shark/wasm-workflow-executor/doc/demo.md">View Demo</a>
+    <a href="https://github.com/Shark/wasm-workflows-plugin/doc/demo.md">View Demo</a>
     ·
-    <a href="https://github.com/Shark/wasm-workflow-executor/doc/use-cases.md">All Use Cases</a>
+    <a href="https://github.com/Shark/wasm-workflows-plugin/doc/use-cases.md">All Use Cases</a>
     -->
   </p>
 </div>
@@ -104,8 +104,8 @@ Open Source software stands on the shoulders of giants. It wouldn't have been po
 1. Clone the repository and change to the [`argo-plugin/`](argo-plugin/) directory:
 
    ```shell
-   git clone https://github.com/Shark/wasm-workflow-executor
-   cd wasm-workflow-executor/argo-plugin
+   git clone https://github.com/Shark/wasm-workflows-plugin
+   cd wasm-workflows-plugin/argo-plugin
    ```
 
 1. Build the plugin ConfigMap:
@@ -145,7 +145,7 @@ spec:
       plugin:
         wasm:
           module:
-            oci: ghcr.io/shark/wasm-workflow-executor-example-ferris-says:latest
+            oci: ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest
 ```
 
 The `wasm` template will produce an output parameter `text` with an awesome message:
@@ -181,7 +181,7 @@ This repo contains a [ready-to-use template for Rust](wasm-modules/templates/rus
 
 Capabilities expand what modules can do. Without them, modules can take input parameters and artifacts and produce some output.
 
-Some [inspiration for capabilities](https://wasmcloud.dev/reference/host-runtime/capabilities/) can be taken from the wasmCloud project. Currently, this executor does not offer any capabilities, but I want to port some of wasmCloud's capability providers over to enable a wide range of stateful use cases like HTTP/REST, S3 object storage, SQL databases, etc.
+Some [inspiration for capabilities](https://wasmcloud.dev/reference/host-runtime/capabilities/) can be taken from the wasmCloud project. Currently, this runtime does not offer any capabilities, but I want to port some of wasmCloud's capability providers over to enable a wide range of stateful use cases like HTTP/REST, S3 object storage, SQL databases, etc.
 
 ### :construction: Distributed Mode
 
@@ -239,13 +239,13 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 Felix Seidel – [@sh4rk](https://twitter.com/sh4rk) – felix@seidel.me
 
-Project Link: [https://github.com/Shark/wasm-workflow-executor](https://github.com/Shark/wasm-workflow-executor)
+Project Link: [https://github.com/Shark/wasm-workflows-plugin](https://github.com/Shark/wasm-workflows-plugin)
 
 ## Acknowledgements
 
 This is a research project as part of my Master Thesis at the [Chair of Prof. Dr. Holger Karl](https://www.hpi.de/karl/people/holger-karl.html) at [Hasso Plattner Institute](https://www.hpi.de), the University of Potsdam (Germany). Thank you for the ongoing support of my thesis!
 
-[issues-shield]: https://img.shields.io/github/issues/Shark/wasm-workflow-executor.svg?style=for-the-badge
-[issues-url]: https://github.com/Shark/wasm-workflow-executor/issues
-[license-shield]: https://img.shields.io/github/license/Shark/wasm-workflow-executor.svg?style=for-the-badge
-[license-url]: https://github.com/Shark/wasm-workflow-executor/blob/main/LICENSE.txt
+[issues-shield]: https://img.shields.io/github/issues/Shark/wasm-workflows-plugin.svg?style=for-the-badge
+[issues-url]: https://github.com/Shark/wasm-workflows-plugin/issues
+[license-shield]: https://img.shields.io/github/license/Shark/wasm-workflows-plugin.svg?style=for-the-badge
+[license-url]: https://github.com/Shark/wasm-workflows-plugin/blob/main/LICENSE.txt

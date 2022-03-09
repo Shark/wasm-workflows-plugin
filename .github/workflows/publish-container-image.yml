@@ -7,7 +7,7 @@ on:
         type: string
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: shark/wasm-workflow-executor
+  IMAGE_NAME: shark/wasm-workflows-plugin
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,7 +30,7 @@ jobs:
 
     - name: Push Docker image
       run: |
-        docker tag sh4rk/wasm-workflow-executor:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
-        docker tag sh4rk/wasm-workflow-executor:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        docker tag sh4rk/wasm-workflows-plugin:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
+        docker tag sh4rk/wasm-workflows-plugin:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest

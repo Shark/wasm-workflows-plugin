@@ -34,7 +34,7 @@ jobs:
     - name: docker build
       uses: docker/build-push-action@v2
       with:
-        tags: sh4rk/wasm-workflow-executor:${{ steps.tag.outputs.tag }}
+        tags: sh4rk/wasm-workflows-plugin:${{ steps.tag.outputs.tag }}
         outputs: type=docker,dest=/tmp/container-image.tar
         cache-from: type=local,src=/tmp/.buildx-cache
         cache-to: type=local,dest=/tmp/.buildx-cache-new
