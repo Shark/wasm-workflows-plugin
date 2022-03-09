@@ -6,8 +6,7 @@ metadata:
 spec:
   sidecar:
     container:
-      # image: docker-registry.default.svc.cluster.local/wasm-workflow-executor:latest
-      image: 192.168.64.2:32000/wasm-workflow-executor:latest
+      image: ghcr.io/shark/wasm-workflow-executor:v0.1.0
       name: wasm-workflow-executor
       ports:
       - containerPort: 3000
@@ -17,9 +16,6 @@ spec:
           port: 3000
         initialDelaySeconds: 2
         periodSeconds: 1
-      env:
-      - name: INSECURE_OCI_REGISTRIES
-        value: 192.168.64.2:32000
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532 # nonroot

@@ -25,9 +25,7 @@ pub async fn execute_template(
         }
     };
 
-    let image = match module_source {
-        OCI(image) => image,
-    };
+    let OCI(image) = module_source;
 
     let mut in_params: Vec<Parameter> = Vec::new();
     if let Some(params) = request.template.inputs.parameters {

@@ -76,7 +76,7 @@ WebAssembly is a new technology in the browser and even more so in the Cloud-Nat
 
 * Containers and Wasm modules play together just fine in the same workflow. Existing container setups don't have to be migrated just because they could. Use Wasm for the tasks for which is a good fit and leave the rest to containers.
 
-* You can find ready-to-use templates for popular programming languages in the [`modules/templates/`](modules/templates/) folder.
+* You can find ready-to-use templates for popular programming languages in the [`wasm-modules/templates/`](wasm-modules/templates/) folder.
 
 * We will provide pre-made modules for popular use cases such as image and text processing, API connectors, etc.
 
@@ -101,11 +101,11 @@ Open Source software stands on the shoulders of giants. It wouldn't have been po
 
 ### Installation
 
-1. Clone the repository and change to the [`plugin/`](plugin/) directory:
+1. Clone the repository and change to the [`argo-plugin/`](argo-plugin/) directory:
 
    ```shell
    git clone https://github.com/Shark/wasm-workflow-executor
-   cd wasm-workflow-executor/plugin
+   cd wasm-workflow-executor/argo-plugin
    ```
 
 1. Build the plugin ConfigMap:
@@ -175,7 +175,7 @@ invoke: function(ctx: invocation) -> node
 
 The contract defines one function `invoke` that the module must implement. `invoke` takes an `invocation` record and returns a `node` record (you can think of records as a structure holding some data). Most importantly, `invocation` holds the input parameters. `node` can specify whether the module executed successfully, provide a result message and can optionally return a list of output parameters.
 
-This repo contains a [ready-to-use template for Rust](modules/templates/rust/).
+This repo contains a [ready-to-use template for Rust](wasm-modules/templates/rust/).
 
 ### :construction: Capabilities
 

@@ -106,7 +106,7 @@ impl ModuleCache for FSCache {
                 Ok(_) => (),
                 Err(err) => return Err(anyhow!(err).context(format!("Deleting file \"{:?}\" failed", &file.path)))
             }
-            deleted_mib = deleted_mib + file.size_mib;
+            deleted_mib += file.size_mib;
             if total_size - deleted_mib <= max_size_mib {
                 tracing::info!("Cached purged, deleted {}MiB in {} files, now using {}MiB out of {}MiB", deleted_mib, i, total_size - deleted_mib, max_size_mib);
             } else {

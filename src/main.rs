@@ -17,7 +17,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::debug!(?config, "Loaded Config");
 
     let bind_ip = config.bind_ip.clone();
-    let bind_port = config.bind_port.clone();
+    let bind_port = config.bind_port;
 
     let app = app::web::router::routes(deps);
 

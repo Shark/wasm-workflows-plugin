@@ -14,7 +14,7 @@ pub mod cache;
 #[tracing::instrument(name = "wasm.run", skip(engine, cache))]
 pub async fn run(
     engine: &wasmtime::Engine,
-    cache: &Box<dyn ModuleCache + Send + Sync>,
+    cache: &'_ (dyn ModuleCache + Send + Sync),
     oci_image: &str,
     invocation: workflow::Invocation<'_>,
     insecure_oci_registries: Vec<String>,
@@ -96,11 +96,11 @@ async fn setup(engine: &wasmtime::Engine,
     workflow::Workflow<(WasiCtx, workflow::WorkflowData)>
 )> {
     let module = unsafe { Module::deserialize(engine, module) }?;
-    let mut linker = Linker::new(&engine);
+    let mut linker = Linker::new(engine);
     let _ = wasmtime_wasi::add_to_linker(&mut linker, |(wasi, _plugin_data)| wasi)?;
     // TODO Remove stdio & args
     let wasi = WasiCtxBuilder::new().inherit_stdio().inherit_args()?.build();
-    let mut store = Store::new(&engine, (wasi, workflow::WorkflowData {}));
+    let mut store = Store::new(engine, (wasi, workflow::WorkflowData {}));
 
     let (wf, _instance) = workflow::Workflow::instantiate(&mut store, &module, &mut linker, |(_wasi, plugin_data)| {
         plugin_data
