@@ -1,0 +1,16 @@
+[package]
+name = "ferris-says"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen-rust = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73" }
+serde = "1.0.136"
+serde_json = "1.0.79"
+anyhow = "1.0.54"
+ferris-says = "0.2.1"

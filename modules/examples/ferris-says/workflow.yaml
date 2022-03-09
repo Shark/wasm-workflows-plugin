@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: wasm-
+spec:
+  entrypoint: wasm
+  arguments:
+    parameters:
+      - name: text
+        value: Hello World
+  templates:
+    - name: wasm
+      inputs:
+        parameters:
+          - name: text
+      plugin:
+        wasm:
+          module:
+            oci: ghcr.io/shark/wasm-workflow-executor-example-ferris-says:latest

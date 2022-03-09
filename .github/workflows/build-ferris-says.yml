@@ -1,0 +1,51 @@
+name: Build ferris-says example
+on:
+  push:
+    # Run for any branch, but not for tags
+    branches:
+    - '*'
+    tags-ignore:
+    - '*'
+    paths:
+    - 'modules/examples/ferris-says/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+
+    - uses: Swatinem/rust-cache@f8f67b7515e98e4ac991ccb5c11240861e0f712b # https://github.com/Swatinem/rust-cache/tree/v1
+      with:
+        working-directory: modules/examples/ferris-says
+
+    - name: Build Wasm module
+      working-directory: modules/examples/ferris-says
+      run: |
+        cargo install cargo-wasi
+        cargo wasi build --release
+
+    - name: Upload Wasm module as artifact
+      uses: actions/upload-artifact@v2.3.1
+      with:
+        name: wasm-module
+        path: modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm
+        retention-days: 7
+
+    - name: Install wasm-to-oci
+      run: |
+        sudo curl -sSL -o /usr/local/bin/wasm-to-oci https://github.com/engineerd/wasm-to-oci/releases/download/v0.1.2/linux-amd64-wasm-to-oci
+        sudo chmod +x /usr/local/bin/wasm-to-oci
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # https://github.com/docker/login-action/tree/v1.14.1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push wasm module to ghcr.io
+      run: wasm-to-oci push modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm ghcr.io/shark/wasm-workflow-executor-example-ferris-says:latest
