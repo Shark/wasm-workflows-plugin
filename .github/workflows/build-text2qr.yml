@@ -1,4 +1,4 @@
-name: Build ferris-says example
+name: Build text2qr example
 on:
   push:
     # Run for any branch, but not for tags
@@ -7,7 +7,7 @@ on:
     tags-ignore:
     - '*'
     paths:
-    - 'wasm-modules/examples/ferris-says/**'
+    - 'wasm-modules/examples/text2qr/**'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,10 +20,10 @@ jobs:
 
     - uses: Swatinem/rust-cache@f8f67b7515e98e4ac991ccb5c11240861e0f712b # https://github.com/Swatinem/rust-cache/tree/v1
       with:
-        working-directory: wasm-modules/examples/ferris-says
+        working-directory: wasm-modules/examples/text2qr
 
     - name: Build Wasm module
-      working-directory: wasm-modules/examples/ferris-says
+      working-directory: wasm-modules/examples/text2qr
       run: |
         cargo install cargo-wasi
         cargo wasi build --release
@@ -32,7 +32,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: wasm-module
-        path: wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm
+        path: wasm-modules/examples/text2qr/target/wasm32-wasi/release/text2qr.wasm
         retention-days: 7
 
     - name: Install wasm-to-oci
@@ -48,4 +48,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push wasm module to ghcr.io
-      run: wasm-to-oci push wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest
+      run: wasm-to-oci push wasm-modules/examples/text2qr/target/wasm32-wasi/release/text2qr.wasm ghcr.io/shark/wasm-workflows-plugin-example-text2qr:latest
