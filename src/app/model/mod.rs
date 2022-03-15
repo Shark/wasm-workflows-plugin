@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
@@ -97,17 +98,37 @@ pub struct ExecuteTemplateResponse {
     pub node: Option<ExecuteTemplateResult>,
 }
 
-/// A successful plugin invocation
-pub const PHASE_SUCCEEDED: &str = "Succeeded";
-
-/// A failed plugin invocation
-pub const PHASE_FAILED: &str = "Failed";
-
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ExecuteTemplateResult {
-    pub phase: String,
+    pub phase: Phase,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outputs: Option<Outputs>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Phase {
+    Succeeded,
+    Failed,
+}
+
+impl FromStr for Phase {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Phase, ()> {
+        match s {
+            "Succeeded" => Ok(Phase::Succeeded),
+            "Failed" => Ok(Phase::Failed),
+            _ => Err(()),
+        }
+    }
+}
+
+/// PluginInvocation is a single Wasm module invocation
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PluginInvocation {
+    pub workflow_name: String,
+    pub plugin_options: Vec<Parameter>,
+    pub parameters: Vec<Parameter>,
 }

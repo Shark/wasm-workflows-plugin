@@ -25,7 +25,6 @@ async fn main() -> anyhow::Result<()> {
     })?;
     let addr = SocketAddr::new(ip_addr, bind_port);
     tracing::info!("Listening on {}", addr);
-    // TODO Add signal handler
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(graceful_shutdown())

@@ -1,22 +1,23 @@
 use crate::app::dependencies::DynDependencyProvider;
 use crate::app::model::ModuleSource::OCI;
 use crate::app::model::{
-    ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, PHASE_FAILED,
+    ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, Phase,
+    PluginInvocation,
 };
-use crate::app::wasm;
-use crate::app::wasm::WasmError;
+use crate::app::wasm::{Runner, WasmError};
 use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use axum_macros::debug_handler;
 use tracing::{debug, error};
 
+#[debug_handler]
 pub async fn execute_template(
     Json(request): Json<ExecuteTemplateRequest>,
     Extension(deps): Extension<DynDependencyProvider>,
 ) -> Result<Json<ExecuteTemplateResponse>, AppError> {
     debug!("Request: {:?}", request);
-    let insecure_oci_registries = deps.get_config().insecure_oci_registries.clone();
 
     let module_source = match request.template.plugin.wasm {
         Some(config) => config.module,
@@ -30,45 +31,32 @@ pub async fn execute_template(
         in_params = params;
     }
 
-    // Some place to hold the JSON value representations
-    let params: Vec<Param> = in_params
-        .into_iter()
-        .map(|param| Param {
-            name: param.name,
-            value: param.value.to_string(),
-        })
-        .collect();
-
-    let out_params: Vec<wasm::workflow::ParameterParam> = params
-        .iter()
-        .map(|param| wasm::workflow::ParameterParam {
-            name: &param.name,
-            value_json: &param.value,
-        })
-        .collect();
-
-    let invocation = wasm::workflow::Invocation {
-        workflow_name: &request.workflow.metadata.name,
-        parameters: &out_params,
-        plugin_options: &Vec::new(), // TODO fill
+    let invocation = PluginInvocation {
+        workflow_name: request.workflow.metadata.name,
+        plugin_options: vec![], // TODO fill
+        parameters: in_params,
     };
 
-    match wasm::run(
+    let insecure_oci_registries: Vec<&str> = deps
+        .get_config()
+        .insecure_oci_registries
+        .iter()
+        .map(AsRef::as_ref)
+        .collect();
+    let runner = Runner::new(
         deps.get_wasm_engine(),
         deps.get_module_cache(),
-        &image,
-        invocation,
-        insecure_oci_registries,
-    )
-    .await
-    {
+        &insecure_oci_registries,
+    );
+
+    match runner.run(&image, invocation).await {
         Ok(result) => {
             let response = ExecuteTemplateResponse { node: Some(result) };
-            debug!("Response: {:?}", response);
+            debug!(?response, "Send Response");
             Ok(response.into())
         }
         Err(err) => {
-            error!("Error: {:?}", err);
+            error!(?err, "Send Error");
             Err(err.into())
         }
     }
@@ -111,7 +99,7 @@ impl IntoResponse for AppError {
 
         let response = Json(ExecuteTemplateResponse {
             node: Some(ExecuteTemplateResult {
-                phase: PHASE_FAILED.to_string(),
+                phase: Phase::Failed,
                 message: error_message.to_string(),
                 outputs: None,
             }),
@@ -119,9 +107,4 @@ impl IntoResponse for AppError {
 
         (status, response).into_response()
     }
-}
-
-struct Param {
-    name: String,
-    value: String,
 }

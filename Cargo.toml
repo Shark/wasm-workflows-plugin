@@ -16,15 +16,18 @@ itertools = "0.10.3"
 zstd = "0.10.0"
 
 tokio = { version = "1.17.0", features = ["full"] }
+async-trait = "0.1.52"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
 tower-http = { version = "0.2.3", features = ["trace", "set-header"] }
 clap = { version = "3.1.0", features = ["derive", "env"] }
 
 axum = "0.4.5"
+axum-macros = "0.1.2"
 
 wasmtime = "0.34.1"
 wasmtime-wasi = "0.34.1"
+wasi-common = "0.34.1"
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73", features = ["async", "tracing"]}
 oci-distribution = "0.8.1"
 
