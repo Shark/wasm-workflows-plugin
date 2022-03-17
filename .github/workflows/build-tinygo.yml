@@ -1,0 +1,51 @@
+name: Build tinygo template
+on:
+  push:
+    # Run for any branch, but not for tags
+    branches:
+    - '*'
+    tags-ignore:
+    - '*'
+    paths:
+    - 'wasm-modules/templates/tinygo/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/setup-go@v3
+      with:
+        go-version: "~1.17.8"
+
+    - name: Install tinygo
+      run: |
+        mkdir ~/lib
+        curl -o- -sSL https://github.com/tinygo-org/tinygo/releases/download/v0.22.0/tinygo0.22.0.linux-amd64.tar.gz | tar -C ~/lib -xzf-
+        echo "$HOME/lib/tinygo/bin" >> $GITHUB_PATH
+
+    - name: Build Wasm module
+      working-directory: wasm-modules/templates/tinygo
+      run: tinygo build -wasm-abi=generic -target=wasi -o main.wasm main.go
+
+    - name: Upload Wasm module as artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: wasm-module
+        path: wasm-modules/templates/tinygo/main.wasm
+        retention-days: 7
+
+    - name: Install wasm-to-oci
+      run: |
+        sudo curl -sSL -o /usr/local/bin/wasm-to-oci https://github.com/engineerd/wasm-to-oci/releases/download/v0.1.2/linux-amd64-wasm-to-oci
+        sudo chmod +x /usr/local/bin/wasm-to-oci
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@dd4fa0671be5250ee6f50aedf4cb05514abda2c7 # https://github.com/docker/login-action/tree/v1.14.1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push wasm module to ghcr.io
+      run: wasm-to-oci push wasm-modules/templates/tinygo/main.wasm ghcr.io/shark/wasm-workflows-plugin-example-tinygo:latest
