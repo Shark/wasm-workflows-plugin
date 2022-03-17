@@ -1,0 +1,17 @@
+{
+  "name": "assemblscript-template",
+  "version": "1.0.0",
+  "description": "i",
+  "main": "index.ts",
+  "scripts": {
+    "build": "asc index.ts -b module.wasm"
+  },
+  "author": "Felix Seidel",
+  "license": "MIT",
+  "devDependencies": {
+    "assemblyscript": "^0.19.23"
+  },
+  "dependencies": {
+    "as-wasi": "^0.4.6"
+  }
+}
