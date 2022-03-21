@@ -30,6 +30,7 @@ wasmtime-wasi = "0.34.1"
 wasi-common = "0.34.1"
 wit-bindgen-wasmtime = { git = "https://github.com/bytecodealliance/wit-bindgen", rev = "e9c7c0a3405845cecd3fe06f3c20ab413302fc73", features = ["async", "tracing"]}
 oci-distribution = "0.8.1"
+wasi-experimental-http-wasmtime = { git = "https://github.com/deislabs/wasi-experimental-http.git", rev = "4ed321d6943f75546e38bba80e14a59797aa29de" }
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]

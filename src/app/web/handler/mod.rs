@@ -19,10 +19,15 @@ pub async fn execute_template(
 ) -> Result<Json<ExecuteTemplateResponse>, AppError> {
     debug!("Request: {:?}", request);
 
-    let module_source = match request.template.plugin.wasm {
-        Some(config) => config.module,
+    let (module_source, permissions, plugin_options_map) = match request.template.plugin.wasm {
+        Some(config) => (config.module, config.permissions, config.extra),
         None => return Ok(ExecuteTemplateResponse { node: None }.into()),
     };
+
+    let plugin_options: Vec<Parameter> = plugin_options_map
+        .into_iter()
+        .map(|(name, value)| Parameter { name, value })
+        .collect();
 
     let OCI(image) = module_source;
 
@@ -33,8 +38,8 @@ pub async fn execute_template(
 
     let invocation = PluginInvocation {
         workflow_name: request.workflow.metadata.name,
-        plugin_options: vec![], // TODO fill
         parameters: in_params,
+        plugin_options,
     };
 
     let insecure_oci_registries: Vec<&str> = deps
@@ -49,7 +54,7 @@ pub async fn execute_template(
         &insecure_oci_registries,
     );
 
-    match runner.run(&image, invocation).await {
+    match runner.run(&image, invocation, &permissions).await {
         Ok(result) => {
             let response = ExecuteTemplateResponse { node: Some(result) };
             debug!(?response, "Send Response");

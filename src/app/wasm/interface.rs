@@ -1,9 +1,12 @@
-use crate::app::model::{ExecuteTemplateResult, Outputs, Parameter, Phase, PluginInvocation};
+use crate::app::model::{
+    ExecuteTemplateResult, ModulePermissions, Outputs, Parameter, Phase, PluginInvocation,
+};
 use anyhow::anyhow;
 use async_trait::async_trait;
 use std::io::{BufReader, Cursor};
 use tracing::debug;
 use wasi_common::pipe::WritePipe;
+use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Engine, Linker, Module, Store, TypedFunc};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use workflow::{Workflow, WorkflowData};
@@ -17,34 +20,71 @@ pub trait WorkflowPlugin {
 }
 
 pub struct WITModule {
-    store: Store<(WasiCtx, workflow::WorkflowData)>,
-    workflow: workflow::Workflow<(WasiCtx, workflow::WorkflowData)>,
+    store: Store<ModuleCtx>,
+    workflow: workflow::Workflow<ModuleCtx>,
+}
+
+struct ModuleCtx {
+    pub wasi: WasiCtx,
+    pub http: HttpCtx,
+    pub plugin_data: WorkflowData,
 }
 
 impl WITModule {
-    pub async fn try_new(engine: &Engine, module: &Module) -> anyhow::Result<Self> {
-        let mut linker = Linker::new(engine);
-        let _ = wasmtime_wasi::add_to_linker(&mut linker, |(wasi, _plugin_data)| wasi)?;
-        let wasi = WasiCtxBuilder::new().build();
-        let mut store = Store::new(engine, (wasi, WorkflowData {}));
+    pub async fn try_new(
+        engine: &Engine,
+        module: &Module,
+        perms: &Option<ModulePermissions>,
+    ) -> anyhow::Result<Self> {
+        let mut http_allowed_hosts: Option<Vec<String>> = None;
+        let mut http_max_concurrent_requests: Option<u32> = None;
+        if let Some(the_perms) = perms {
+            if let Some(http_perms) = &the_perms.http {
+                http_allowed_hosts = Some(http_perms.allowed_hosts.to_owned());
+                http_max_concurrent_requests = Some(http_perms.max_concurrent_requests)
+            }
+        }
+        debug!(
+            ?http_allowed_hosts,
+            ?http_max_concurrent_requests,
+            "WASI HTTP Settings"
+        );
 
-        let (wf, _instance) =
-            Workflow::instantiate(&mut store, module, &mut linker, |(_wasi, plugin_data)| {
-                plugin_data
-            })
-            .await
-            .map_err(|err| {
-                anyhow!(err)
-                    .context("Instantiating Wasm module with Workflow interface type failed")
-            })?;
+        let mut linker = Linker::new(engine);
+        let _ = wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| -> &mut WasiCtx {
+            &mut ctx.wasi
+        })?;
+        let wasi = WasiCtxBuilder::new().build();
+        let mut store = Store::new(
+            engine,
+            ModuleCtx {
+                wasi,
+                http: HttpCtx {
+                    allowed_hosts: http_allowed_hosts,
+                    max_concurrent_requests: http_max_concurrent_requests,
+                },
+                plugin_data: WorkflowData {},
+            },
+        );
+
+        let http = HttpState::new()?;
+        http.add_to_linker(&mut linker, |ctx: &ModuleCtx| -> &HttpCtx { &ctx.http })?;
+
+        let (wf, _instance) = Workflow::instantiate(
+            &mut store,
+            module,
+            &mut linker,
+            |ctx: &mut ModuleCtx| -> &mut WorkflowData { &mut ctx.plugin_data },
+        )
+        .await
+        .map_err(|err| {
+            anyhow!(err).context("Instantiating Wasm module with Workflow interface type failed")
+        })?;
 
         Ok(Self::new(store, wf))
     }
 
-    fn new(
-        store: Store<(WasiCtx, workflow::WorkflowData)>,
-        workflow: workflow::Workflow<(WasiCtx, workflow::WorkflowData)>,
-    ) -> Self {
+    fn new(store: Store<ModuleCtx>, workflow: workflow::Workflow<ModuleCtx>) -> Self {
         WITModule { store, workflow }
     }
 }
@@ -64,7 +104,8 @@ impl WorkflowPlugin for WITModule {
                     parameters: &stored_wasm_invocation.parameters,
                 },
             )
-            .await?;
+            .await
+            .map_err(|err| anyhow!(err).context("Invoking module failed"))?;
         let outputs: Option<Outputs> = match node.parameters.len() {
             0 => None,
             _ => {

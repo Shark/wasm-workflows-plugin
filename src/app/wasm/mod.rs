@@ -1,4 +1,4 @@
-use crate::app::model::{ExecuteTemplateResult, PluginInvocation};
+use crate::app::model::{ExecuteTemplateResult, ModulePermissions, PluginInvocation};
 use crate::app::wasm::cache::ModuleCache;
 use crate::app::wasm::interface::{WASIModule, WITModule, WorkflowPlugin};
 use anyhow::{anyhow, Error};
@@ -36,6 +36,7 @@ impl<'a> Runner<'a> {
         &self,
         oci_image: &str,
         invocation: PluginInvocation,
+        perms: &Option<ModulePermissions>,
     ) -> anyhow::Result<ExecuteTemplateResult, WasmError> {
         let mut module: Option<Vec<u8>> = self.cache.get(oci_image).map_err(|err| {
             WasmError::EnvironmentSetup(anyhow!(err).context("Checking Wasm module cache failed"))
@@ -67,7 +68,7 @@ impl<'a> Runner<'a> {
 
         // First try to instantiate the module as WIT and fall back to WASI in case of an error
         let mut plugin: Box<dyn WorkflowPlugin + Send> =
-            match WITModule::try_new(self.engine, &module)
+            match WITModule::try_new(self.engine, &module, perms)
                 .await
                 .map_err(|err| {
                     WasmError::EnvironmentSetup(anyhow!(err).context("Creating WIT module failed"))

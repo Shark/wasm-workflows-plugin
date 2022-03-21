@@ -649,12 +649,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f73fe65f54d1e12b726f517d3e2135ca3125a437b6d998caf1962961f7172d9e"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "futures-executor",
+ "futures-io",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3083ce4b914124575708913bca19bfe887522d6e2e6d0952943f5eac4a74010"
 dependencies = [
  "futures-core",
+ "futures-sink",
 ]
 
 [[package]]
@@ -673,6 +689,12 @@ dependencies = [
  "futures-task",
  "futures-util",
 ]
+
+[[package]]
+name = "futures-io"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc4045962a5a5e935ee2fdedaa4e08284547402885ab326734432bed5d12966b"
 
 [[package]]
 name = "futures-macro"
@@ -703,10 +725,13 @@ version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8b7abd5d659d9b90c8cba917f6ec750a74e2dc23902ef9cd4cc8c8b22e6036a"
 dependencies = [
+ "futures-channel",
  "futures-core",
+ "futures-io",
  "futures-macro",
  "futures-sink",
  "futures-task",
+ "memchr",
  "pin-project-lite",
  "pin-utils",
  "slab",
@@ -2395,6 +2420,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasi-experimental-http-wasmtime"
+version = "0.9.0"
+source = "git+https://github.com/deislabs/wasi-experimental-http.git?rev=4ed321d6943f75546e38bba80e14a59797aa29de#4ed321d6943f75546e38bba80e14a59797aa29de"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "futures",
+ "http",
+ "reqwest",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url 2.2.2",
+ "wasi-common",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2481,6 +2525,7 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "wasi-common",
+ "wasi-experimental-http-wasmtime",
  "wasmtime",
  "wasmtime-wasi",
  "wit-bindgen-wasmtime",

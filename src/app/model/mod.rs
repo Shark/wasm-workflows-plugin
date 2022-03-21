@@ -68,8 +68,28 @@ pub struct Plugin {
 #[allow(dead_code)]
 pub struct WasmPluginConfig {
     pub module: ModuleSource,
+    pub permissions: Option<ModulePermissions>,
     #[serde(flatten)]
     pub extra: HashMap<String, Value>,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct ModulePermissions {
+    pub http: Option<HTTPPermissions>,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct HTTPPermissions {
+    pub allowed_hosts: Vec<String>,
+    // TODO this should be easier to accomplish
+    #[serde(default = "default_max_concurrent_requests")]
+    pub max_concurrent_requests: u32,
+}
+
+fn default_max_concurrent_requests() -> u32 {
+    8
 }
 
 #[derive(Deserialize, Debug)]
