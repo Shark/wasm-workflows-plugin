@@ -62,10 +62,10 @@ impl Workflow {
         let req = http::request::Builder::new()
             .method(http::Method::GET)
             .uri(url)
-            .body(Some(bytes::Bytes::from(&b""[..])))
+            .body(Option::<bytes::Bytes>::None)
             .unwrap();
         let mut res = wasi_experimental_http::request(req)
-            .map_err(|err| anyhow!(err).context("Made HTTP request"))?;
+            .map_err(|err| anyhow!(err).context("Unspecified error during request"))?;
         let res = res.body_read_all()?;
         let res = std::str::from_utf8(&res)?;
         let res = json!(res);

@@ -2,25 +2,23 @@ use crate::app::model::{
     ExecuteTemplateResult, ModulePermissions, Outputs, Parameter, Phase, PluginInvocation,
 };
 use anyhow::anyhow;
-use async_trait::async_trait;
 use std::io::{BufReader, Cursor};
 use tracing::debug;
-use wasi_common::pipe::WritePipe;
+use wasi_common::pipe::{ReadPipe, WritePipe};
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Engine, Linker, Module, Store, TypedFunc};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
 use workflow::{Workflow, WorkflowData};
 
 // https://github.com/bytecodealliance/wit-bindgen/pull/126
-wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"], async: ["invoke"]});
+wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"]});
 
-#[async_trait]
 pub trait WorkflowPlugin {
-    async fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult>;
+    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult>;
 }
 
 pub struct WITModule {
-    store: Store<ModuleCtx>,
+    store: Option<Store<ModuleCtx>>,
     workflow: workflow::Workflow<ModuleCtx>,
 }
 
@@ -30,45 +28,94 @@ struct ModuleCtx {
     pub plugin_data: WorkflowData,
 }
 
+impl ModuleCtx {
+    fn set_stdin(&mut self, content: Vec<u8>) {
+        let stdin = ReadPipe::new(BufReader::new(Cursor::new(content)));
+        self.wasi.set_stdin(Box::new(stdin));
+    }
+}
+
+fn http_ctx_from_perms(perms: &Option<ModulePermissions>) -> HttpCtx {
+    let mut http_allowed_hosts: Option<Vec<String>> = None;
+    let mut http_max_concurrent_requests: Option<u32> = None;
+    if let Some(the_perms) = perms {
+        if let Some(http_perms) = &the_perms.http {
+            http_allowed_hosts = Some(http_perms.allowed_hosts.to_owned());
+            http_max_concurrent_requests = Some(http_perms.max_concurrent_requests)
+        }
+    }
+    HttpCtx {
+        allowed_hosts: http_allowed_hosts,
+        max_concurrent_requests: http_max_concurrent_requests,
+    }
+}
+
+fn common_setup_module(
+    engine: &Engine,
+    perms: &Option<ModulePermissions>,
+) -> anyhow::Result<(Linker<ModuleCtx>, Store<ModuleCtx>)> {
+    let mut linker = Linker::new(engine);
+    let _ = wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| &mut ctx.wasi)?;
+    let mut wasi = WasiCtxBuilder::new().build();
+    let stdout = WritePipe::new_in_memory();
+    let stderr = WritePipe::new_in_memory();
+    wasi.set_stdout(Box::new(stdout));
+    wasi.set_stderr(Box::new(stderr));
+    let http_ctx = http_ctx_from_perms(perms);
+    debug!(
+        allowed_hosts = ?http_ctx.allowed_hosts,
+        max_concurrent_requests = ?http_ctx.max_concurrent_requests,
+        "WASI HTTP Settings"
+    );
+    let http = HttpState::new()?;
+    http.add_to_linker(&mut linker, |ctx: &ModuleCtx| -> &HttpCtx { &ctx.http })?;
+    let store = Store::new(
+        engine,
+        ModuleCtx {
+            wasi,
+            http: http_ctx,
+            plugin_data: WorkflowData {},
+        },
+    );
+    Ok((linker, store))
+}
+
+type SysOutput = (WritePipe<Cursor<Vec<u8>>>, WritePipe<Cursor<Vec<u8>>>);
+
+fn prepare_sys_output(wasi: &mut WasiCtx) -> SysOutput {
+    let stdout = WritePipe::new_in_memory();
+    let stderr = WritePipe::new_in_memory();
+    wasi.set_stdout(Box::new(stdout.clone()));
+    wasi.set_stderr(Box::new(stderr.clone()));
+    (stdout, stderr)
+}
+
+fn retrieve_sys_output(
+    stdout: WritePipe<Cursor<Vec<u8>>>,
+    stderr: WritePipe<Cursor<Vec<u8>>>,
+) -> anyhow::Result<(String, String)> {
+    let stdout: Vec<u8> = stdout
+        .try_into_inner()
+        .expect("sole remaining reference to WritePipe")
+        .into_inner();
+    let stdout =
+        String::from_utf8(stdout).map_err(|err| anyhow!(err).context("Parsing stdout as UTF-8"))?;
+    let stderr: Vec<u8> = stderr
+        .try_into_inner()
+        .expect("sole remaining reference to WritePipe")
+        .into_inner();
+    let stderr =
+        String::from_utf8(stderr).map_err(|err| anyhow!(err).context("Parsing stderr as UTF-8"))?;
+    Ok((stdout, stderr))
+}
+
 impl WITModule {
-    pub async fn try_new(
+    pub fn try_new(
         engine: &Engine,
         module: &Module,
         perms: &Option<ModulePermissions>,
     ) -> anyhow::Result<Self> {
-        let mut http_allowed_hosts: Option<Vec<String>> = None;
-        let mut http_max_concurrent_requests: Option<u32> = None;
-        if let Some(the_perms) = perms {
-            if let Some(http_perms) = &the_perms.http {
-                http_allowed_hosts = Some(http_perms.allowed_hosts.to_owned());
-                http_max_concurrent_requests = Some(http_perms.max_concurrent_requests)
-            }
-        }
-        debug!(
-            ?http_allowed_hosts,
-            ?http_max_concurrent_requests,
-            "WASI HTTP Settings"
-        );
-
-        let mut linker = Linker::new(engine);
-        let _ = wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| -> &mut WasiCtx {
-            &mut ctx.wasi
-        })?;
-        let wasi = WasiCtxBuilder::new().build();
-        let mut store = Store::new(
-            engine,
-            ModuleCtx {
-                wasi,
-                http: HttpCtx {
-                    allowed_hosts: http_allowed_hosts,
-                    max_concurrent_requests: http_max_concurrent_requests,
-                },
-                plugin_data: WorkflowData {},
-            },
-        );
-
-        let http = HttpState::new()?;
-        http.add_to_linker(&mut linker, |ctx: &ModuleCtx| -> &HttpCtx { &ctx.http })?;
+        let (mut linker, mut store) = common_setup_module(engine, perms)?;
 
         let (wf, _instance) = Workflow::instantiate(
             &mut store,
@@ -76,7 +123,6 @@ impl WITModule {
             &mut linker,
             |ctx: &mut ModuleCtx| -> &mut WorkflowData { &mut ctx.plugin_data },
         )
-        .await
         .map_err(|err| {
             anyhow!(err).context("Instantiating Wasm module with Workflow interface type failed")
         })?;
@@ -85,27 +131,33 @@ impl WITModule {
     }
 
     fn new(store: Store<ModuleCtx>, workflow: workflow::Workflow<ModuleCtx>) -> Self {
-        WITModule { store, workflow }
+        WITModule {
+            store: Some(store),
+            workflow,
+        }
     }
 }
 
-#[async_trait]
 impl WorkflowPlugin for WITModule {
-    async fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
+    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
         let serialized_invocation: SerializedInvocation = invocation.into();
         let stored_wasm_invocation: StoredWasmInvocation = (&serialized_invocation).into();
+        let store = self.store.as_mut().expect("present store");
+        let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
         let node = self
             .workflow
             .invoke(
-                &mut self.store,
+                store,
                 workflow::Invocation {
                     workflow_name: stored_wasm_invocation.workflow_name,
                     plugin_options: &stored_wasm_invocation.plugin_options,
                     parameters: &stored_wasm_invocation.parameters,
                 },
             )
-            .await
             .map_err(|err| anyhow!(err).context("Invoking module failed"))?;
+        self.store = None;
+        let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
+        debug!(?stdout, ?stderr, "Module Output");
         let outputs: Option<Outputs> = match node.parameters.len() {
             0 => None,
             _ => {
@@ -153,17 +205,18 @@ impl WorkflowPlugin for WITModule {
 }
 
 pub struct WASIModule {
-    store: Option<Store<WasiCtx>>,
+    store: Option<Store<ModuleCtx>>,
     workflow: TypedFunc<(), ()>,
 }
 
 impl WASIModule {
-    pub async fn try_new(engine: &Engine, module: &Module) -> anyhow::Result<Self> {
-        let mut linker = Linker::new(engine);
-        let _ = wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
-        let wasi = WasiCtxBuilder::new().build();
-        let mut store = Store::new(engine, wasi);
-        linker.module_async(&mut store, "", module).await?;
+    pub fn try_new(
+        engine: &Engine,
+        module: &Module,
+        perms: &Option<ModulePermissions>,
+    ) -> anyhow::Result<Self> {
+        let (mut linker, mut store) = common_setup_module(engine, perms)?;
+        linker.module(&mut store, "", module)?;
         let workflow = linker
             .get_default(&mut store, "")?
             .typed::<(), (), _>(&store)?;
@@ -171,7 +224,7 @@ impl WASIModule {
         Ok(Self::new(store, workflow))
     }
 
-    pub fn new(store: Store<WasiCtx>, workflow: TypedFunc<(), ()>) -> Self {
+    fn new(store: Store<ModuleCtx>, workflow: TypedFunc<(), ()>) -> Self {
         WASIModule {
             store: Some(store),
             workflow,
@@ -179,51 +232,34 @@ impl WASIModule {
     }
 }
 
-#[async_trait]
 impl WorkflowPlugin for WASIModule {
-    async fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
-        let invocation_json = serde_json::to_string(&invocation)?.as_bytes().to_owned();
-        let invocation_read_pipe =
-            wasi_common::pipe::ReadPipe::new(BufReader::new(Cursor::new(invocation_json)));
+    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
+        let invocation = serde_json::to_string(&invocation)?.as_bytes().to_owned();
+        let mut store = self.store.as_mut().expect("present store");
+        store.data_mut().set_stdin(invocation);
+        let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
 
-        let store = self.store.as_mut().expect("store is present");
-        store.data_mut().set_stdin(Box::new(invocation_read_pipe));
-
-        let stdout = WritePipe::new_in_memory();
-        store.data_mut().set_stdout(Box::new(stdout.clone()));
-
-        match self.workflow.call_async(store, ()).await {
+        match self.workflow.call(&mut store, ()) {
             Ok(_) => {
-                // Store must be dropped so that we can read from stdout
                 self.store = None;
-                let stdout_u8: Vec<u8> = stdout
-                    .try_into_inner()
-                    .expect("sole remaining reference to WritePipe")
-                    .into_inner();
-                let stdout = String::from_utf8(stdout_u8)
-                    .map_err(|err| anyhow!(err).context("Parsing stdout as UTF-8"))?;
-                debug!(?stdout, "Stdout");
+                let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
+                debug!(?stdout, ?stderr, "Module Output");
                 match serde_json::from_str(&stdout) {
                     Ok(result) => Ok(result),
                     Err(err) => {
                         debug!(?err, "Error parsing stdout as ExecuteTemplateResult");
-                        return Ok(ExecuteTemplateResult {
+                        Ok(ExecuteTemplateResult {
                             phase: Phase::Succeeded,
                             message: stdout,
                             outputs: None,
-                        });
+                        })
                     }
                 }
             }
             Err(e) => {
                 self.store = None;
-                let stdout_u8: Vec<u8> = stdout
-                    .try_into_inner()
-                    .expect("sole remaining reference to WritePipe")
-                    .into_inner();
-                let stdout = String::from_utf8(stdout_u8)
-                    .map_err(|err| anyhow!(err).context("Parsing stdout as UTF-8"))?;
-                debug!(?stdout, "Stdout");
+                let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
+                debug!(?stdout, ?stderr, "Module Output");
                 Ok(ExecuteTemplateResult {
                     phase: Phase::Failed,
                     message: e.to_string(),

@@ -42,19 +42,27 @@ pub async fn execute_template(
         plugin_options,
     };
 
-    let insecure_oci_registries: Vec<&str> = deps
-        .get_config()
-        .insecure_oci_registries
-        .iter()
-        .map(AsRef::as_ref)
-        .collect();
-    let runner = Runner::new(
-        deps.get_wasm_engine(),
-        deps.get_module_cache(),
-        &insecure_oci_registries,
-    );
+    let cache = deps.get_module_cache();
 
-    match runner.run(&image, invocation, &permissions).await {
+    // Spawn the module runner in a new tokio thread
+    // Note: Added this because without the thread, the program would block when using
+    // wasi-experimental-http in the module. But only on the second module run. This probably had
+    // something to do with reqwest and connection pooling, but the thread resolved the problem
+    // as well and was an easier solution.
+    let result = tokio::spawn(async move {
+        let insecure_oci_registries: Vec<&str> = deps
+            .get_config()
+            .insecure_oci_registries
+            .iter()
+            .map(AsRef::as_ref)
+            .collect();
+        let runner = Runner::new(&cache, &insecure_oci_registries);
+        runner.run(&image, invocation, &permissions).await
+    })
+    .await
+    .expect("able to join runner task");
+
+    match result {
         Ok(result) => {
             let response = ExecuteTemplateResponse { node: Some(result) };
             debug!(?response, "Send Response");

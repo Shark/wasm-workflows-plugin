@@ -11,26 +11,21 @@ mod image;
 mod interface;
 
 pub struct Runner<'a> {
-    engine: &'a wasmtime::Engine,
     cache: &'a (dyn ModuleCache + Send + Sync),
     insecure_oci_registries: &'a [&'a str],
 }
 
 impl<'a> Runner<'a> {
     pub fn new(
-        engine: &'a wasmtime::Engine,
         cache: &'a (dyn ModuleCache + Send + Sync),
         insecure_oci_registries: &'a [&'a str],
     ) -> Self {
         Runner {
-            engine,
             cache,
             insecure_oci_registries,
         }
     }
-}
 
-impl<'a> Runner<'a> {
     #[tracing::instrument(name = "wasm.run", skip(self))]
     pub async fn run(
         &self,
@@ -38,6 +33,7 @@ impl<'a> Runner<'a> {
         invocation: PluginInvocation,
         perms: &Option<ModulePermissions>,
     ) -> anyhow::Result<ExecuteTemplateResult, WasmError> {
+        let engine = setup_engine().map_err(WasmError::EnvironmentSetup)?;
         let mut module: Option<Vec<u8>> = self.cache.get(oci_image).map_err(|err| {
             WasmError::EnvironmentSetup(anyhow!(err).context("Checking Wasm module cache failed"))
         })?;
@@ -49,7 +45,7 @@ impl<'a> Runner<'a> {
                 })?;
             let precompiled_mod =
                 tracing::trace_span!("engine.precompile_module").in_scope(|| {
-                    self.engine.precompile_module(&pulled_mod).map_err(|err| {
+                    engine.precompile_module(&pulled_mod).map_err(|err| {
                         WasmError::Precompile(
                             anyhow!(err).context("Wasm module precompilation failed"),
                         )
@@ -61,28 +57,23 @@ impl<'a> Runner<'a> {
             module = Some(precompiled_mod);
         }
 
-        let module =
-            unsafe { Module::deserialize(self.engine, module.unwrap()) }.map_err(|err| {
-                WasmError::EnvironmentSetup(anyhow!(err).context("Deserializing module failed"))
-            })?;
+        let module = unsafe { Module::deserialize(&engine, module.unwrap()) }.map_err(|err| {
+            WasmError::EnvironmentSetup(anyhow!(err).context("Deserializing module failed"))
+        })?;
 
         // First try to instantiate the module as WIT and fall back to WASI in case of an error
         let mut plugin: Box<dyn WorkflowPlugin + Send> =
-            match WITModule::try_new(self.engine, &module, perms)
-                .await
-                .map_err(|err| {
-                    WasmError::EnvironmentSetup(anyhow!(err).context("Creating WIT module failed"))
-                }) {
+            match WITModule::try_new(&engine, &module, perms).map_err(|err| {
+                WasmError::EnvironmentSetup(anyhow!(err).context("Creating WIT module failed"))
+            }) {
                 Ok(wit) => Box::new(wit),
                 Err(err) => {
                     debug!(?err, "Error instantiating module as WIT");
-                    match WASIModule::try_new(self.engine, &module)
-                        .await
-                        .map_err(|err| {
-                            WasmError::EnvironmentSetup(
-                                anyhow!(err).context("Creating WASI module failed"),
-                            )
-                        }) {
+                    match WASIModule::try_new(&engine, &module, perms).map_err(|err| {
+                        WasmError::EnvironmentSetup(
+                            anyhow!(err).context("Creating WASI module failed"),
+                        )
+                    }) {
                         Ok(wasi) => Box::new(wasi),
                         Err(e) => return Err(e),
                     }
@@ -90,7 +81,6 @@ impl<'a> Runner<'a> {
             };
         let result = info_span!("wasm.execute_mod")
             .in_scope(|| plugin.run(invocation))
-            .await
             .map_err(|err| {
                 WasmError::Invocation(anyhow!(err).context("Wasm module invocation failed"))
             })?;
@@ -110,9 +100,8 @@ async fn pull<'a>(
 }
 
 pub fn setup_engine() -> anyhow::Result<wasmtime::Engine> {
-    let mut config = wasmtime::Config::new();
-    let config = config.async_support(true);
-    Engine::new(config)
+    let config = wasmtime::Config::new();
+    Engine::new(&config)
 }
 
 #[derive(Debug)]
