@@ -202,6 +202,24 @@ Capabilities expand what modules can do. Out of the box, modules can take input 
 
 The HTTP capability provider allows you to make HTTP requests from your Wasm module. The capability is available in every module mode. Please refer to the [`wasi-experimental-http`](https://github.com/deislabs/wasi-experimental-http) repository for complete information of how to access the HTTP capability from your module. There you will find examples for both Rust and AssemblyScript.
 
+When using the HTTP capability, you need to whitelist the hosts that the module is allowed to connect to. This illustrates the ease-of-use that WebAssembly's capability-oriented security model offers: for you it's very easy to tell if a module should be able to connect outside – and now it's finally easy to restrict the code you're running.
+
+```yaml
+- name: wasm
+  inputs:
+    parameters:
+    - name: url
+      value: http://ip4only.me/api/
+  plugin:
+    wasm:
+      module:
+        oci: ghcr.io/shark/wasm-workflows-plugin-http-request:latest
+      permissions:
+        http:
+          allowed_hosts:
+          - http://ip4only.me
+```
+
 ### :construction: Distributed Mode
 
 Right now, all Wasm modules run in the plugin context -- in a single container This is fine for many use cases because Argo creates a new plugin context for every workflow instance. But the scaling is limited to a single node. For a full showcase of the vision of Cloud-Native WebAssembly, the workload should of course be distributed.
