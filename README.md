@@ -167,21 +167,40 @@ Input and output parameters between workflow steps work just like you'd expect. 
 
 ### Module Development
 
-Creating a new Wasm module is easy. All your module must do is implement the [WebAssembly Interface Types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) contract. You find this contract at [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit).
+Creating a new Wasm module is easy. The preferred way is to implement the [Plugin Interface](#recommended-plugin-interface). If this is not possible, the [WASI Interface](#generic-wasi) provides a generic method that works with any language.
+
+#### Recommended: Plugin Interface
 
 ```
 invoke: function(ctx: invocation) -> node
 ```
 
-The contract defines one function `invoke` that the module must implement. `invoke` takes an `invocation` record and returns a `node` record (you can think of records as a structure holding some data). Most importantly, `invocation` holds the input parameters. `node` can specify whether the module executed successfully, provide a result message and can optionally return a list of output parameters.
+When you use the Plugin Interface, you just implement the `invoke` function shown in the code block above this paragraph. This method has the advantage that you get passed the module context (parameters, artifacts, custom settings, etc.) as a native object in your language and you return a native object – no need to think about parsing or writing JSON or there like.
 
-This repo contains a [ready-to-use template for Rust](wasm-modules/templates/rust/).
+This is based on the [WebAssembly Interface Types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) concept. You'll find the WIT contract at [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit).
 
-### :construction: Capabilities
+This method is usable easily for languages supported by `wit-bindgen`. This repo currently contains a [ready-to-use template for Rust](wasm-modules/templates/rust/).
 
-Capabilities expand what modules can do. Without them, modules can take input parameters and artifacts and produce some output.
+The `invoke` function takes an `invocation` record and returns a `node` record. Think of records as a structure holding some data. Most importantly, `invocation` holds the input parameters. `node` can specify whether the module executed successfully, provide a result message and can optionally return a list of output parameters.
 
-Some [inspiration for capabilities](https://wasmcloud.dev/reference/host-runtime/capabilities/) can be taken from the wasmCloud project. Currently, this runtime does not offer any capabilities, but I want to port some of wasmCloud's capability providers over to enable a wide range of stateful use cases like HTTP/REST, S3 object storage, SQL databases, etc.
+#### Generic: WASI
+
+[WASI](https://wasi.dev) provides a modular system interface for Wasm. It is the most compatible method of invoking headless Wasm modules. We provide the WASI APIs to your module anyway and the engine will fall back to starting the module as a generic WASI module – calling the `_start` function – if the Plugin Interface is not implemented.
+
+Your life as a module developer won't be as easy though, because you need to read the input from standard input (*stdin*) and respond with your result on standard output (*stdout*). Both will need to be encoded as JSON. The structure of the object you get passed on *stdin* is the same as the one in [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit). The same is true for the result in *stdout*. However, for maximum compatibility, the runtime will fallback to a string interpretation of the module output when it doesn't conform to the `node` schema.
+
+There are several examples for WASI-based modules in this repository:
+
+* [AssemblyScript](wasm-modules/templates/assemblyscript/)
+* [TinyGo](wasm-modules/templates/tinygo)
+
+### Capabilities
+
+Capabilities expand what modules can do. Out of the box, modules can take input parameters and artifacts and produce some output. Take a look at the [capabilities for wasmCloud](https://wasmcloud.dev/reference/host-runtime/capabilities/) for a more complete list of useful capabilities. The capabilities that this plugin offers will be extended in the future.
+
+#### HTTP Capability
+
+The HTTP capability provider allows you to make HTTP requests from your Wasm module. The capability is available in every module mode. Please refer to the [`wasi-experimental-http`](https://github.com/deislabs/wasi-experimental-http) repository for complete information of how to access the HTTP capability from your module. There you will find examples for both Rust and AssemblyScript.
 
 ### :construction: Distributed Mode
 
@@ -209,9 +228,7 @@ Currently, this project only supports OCI registries and the format created by t
 - [ ] **Distributed Mode**
 - [ ] Create ready-to-use modules for demo (cowsay), and then image/text processing
 - [ ] Support input + output artifacts
-- [ ] Support WASI fallback mode for compatibility with languages without [interface types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) library support
-- [ ] Create examples for AssemblyScript & (Tiny)Go
-- [ ] Enable additional capability providers (HTTP, S3, SQL, etc.)
+- [ ] Enable additional capability providers (~~HTTP~~, S3, SQL, etc.)
 - [ ] Support authentication for OCI (pull secrets)
 - [ ] Support [WAPM](https://wapm.io) as a module source
 - [ ] Support [Bindle]() as a module source
