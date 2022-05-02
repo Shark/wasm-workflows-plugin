@@ -11,8 +11,9 @@ async fn main() -> anyhow::Result<()> {
     let deps = app::dependencies::initialize()
         .map_err(|err| anyhow!(err).context("Initializing dependencies failed"))?;
     let config = deps.get_config();
+    tracing::info!("Log level is {}", config.log_level);
 
-    app_tracing::setup(config.debug, config.enable_telemetry).expect("setup tracing");
+    app_tracing::setup(&config.log_level, config.enable_telemetry).expect("setup tracing");
     tracing::debug!(?config, "Loaded Config");
 
     let bind_ip = config.bind_ip.clone();

@@ -1,3 +1,4 @@
+use crate::app::config::LogLevel;
 use anyhow::anyhow;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::filter::dynamic_filter_fn;
@@ -6,18 +7,25 @@ use tracing_subscriber::{
     prelude::*,
 };
 
-pub fn setup(debug: bool, enable_telemetry: bool) -> anyhow::Result<()> {
-    let filter = EnvFilter::default().add_directive(LevelFilter::INFO.into());
+pub fn setup(log_level: &LogLevel, enable_telemetry: bool) -> anyhow::Result<()> {
+    let filter = EnvFilter::from_default_env().add_directive(LevelFilter::INFO.into());
 
-    let filter = match debug {
-        true => filter
+    let filter = match log_level {
+        LogLevel::Debug => filter
             .add_directive("tower_http=debug".parse().expect("parse directive"))
             .add_directive(
                 "wasm_workflows_plugin=debug"
                     .parse()
                     .expect("parse directive"),
             ),
-        false => filter,
+        LogLevel::Trace => filter
+            .add_directive("tower_http=debug".parse().expect("parse directive"))
+            .add_directive(
+                "wasm_workflows_plugin=trace"
+                    .parse()
+                    .expect("parse directive"),
+            ),
+        _ => filter,
     };
 
     let telemetry: Option<OpenTelemetryLayer<_, _>> = match enable_telemetry {

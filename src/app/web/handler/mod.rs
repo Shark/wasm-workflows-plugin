@@ -49,7 +49,7 @@ pub async fn execute_template(
     // wasi-experimental-http in the module. But only on the second module run. This probably had
     // something to do with reqwest and connection pooling, but the thread resolved the problem
     // as well and was an easier solution.
-    let result = tokio::spawn(async move {
+    let result = tokio::task::spawn_blocking(move || {
         let insecure_oci_registries: Vec<&str> = deps
             .get_config()
             .insecure_oci_registries
@@ -57,7 +57,7 @@ pub async fn execute_template(
             .map(AsRef::as_ref)
             .collect();
         let runner = Runner::new(&cache, &insecure_oci_registries);
-        runner.run(&image, invocation, &permissions).await
+        runner.run(&image, invocation, &permissions)
     })
     .await
     .expect("able to join runner task");

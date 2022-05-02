@@ -46,13 +46,13 @@ impl ModuleCache for FSCache {
             Ok(f) => f,
             Err(err) => {
                 if err.kind() == ErrorKind::NotFound {
-                    tracing::debug!("Cache miss for {:?}", path);
+                    tracing::trace!("Cache miss for {:?}", path);
                     return Ok(None);
                 }
                 return Err(err.into());
             }
         };
-        tracing::debug!("Cache hit for {:?}", path);
+        tracing::trace!("Cache hit for {:?}", path);
         let buf = zstd::stream::decode_all(f)?;
         Ok(Some(buf))
     }
@@ -101,7 +101,7 @@ impl ModuleCache for FSCache {
 
         let total_size: u64 = files.iter().map(|f| f.size_mib).sum();
         if total_size < max_size_mib {
-            tracing::debug!(
+            tracing::trace!(
                 "Not purging cache, total cached files: {}MiB, max size: {}MiB",
                 total_size,
                 max_size_mib
@@ -133,7 +133,7 @@ impl ModuleCache for FSCache {
                     max_size_mib
                 );
             } else {
-                tracing::debug!(
+                tracing::trace!(
                     "Deleted file #{} ({:?}), continuing to delete",
                     i,
                     &file.path

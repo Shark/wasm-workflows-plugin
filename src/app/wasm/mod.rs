@@ -3,6 +3,7 @@ use crate::app::wasm::cache::ModuleCache;
 use crate::app::wasm::interface::{WASIModule, WITModule, WorkflowPlugin};
 use anyhow::{anyhow, Error};
 pub use interface::workflow::{Invocation, ParameterParam};
+use tokio::runtime::Handle;
 use tracing::{debug, info_span};
 use wasmtime::{Engine, Module};
 
@@ -27,7 +28,7 @@ impl<'a> Runner<'a> {
     }
 
     #[tracing::instrument(name = "wasm.run", skip(self))]
-    pub async fn run(
+    pub fn run(
         &self,
         oci_image: &str,
         invocation: PluginInvocation,
@@ -38,11 +39,13 @@ impl<'a> Runner<'a> {
             WasmError::EnvironmentSetup(anyhow!(err).context("Checking Wasm module cache failed"))
         })?;
         if module.is_none() {
-            let pulled_mod = pull(oci_image, self.insecure_oci_registries)
-                .await
-                .map_err(|err| {
-                    WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
-                })?;
+            let pulled_mod: Vec<u8> = Handle::current().block_on(async {
+                pull(oci_image, self.insecure_oci_registries)
+                    .await
+                    .map_err(|err| {
+                        WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
+                    })
+            })?;
             let precompiled_mod =
                 tracing::trace_span!("engine.precompile_module").in_scope(|| {
                     engine.precompile_module(&pulled_mod).map_err(|err| {

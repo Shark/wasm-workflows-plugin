@@ -1,4 +1,7 @@
+use anyhow::anyhow;
 use clap::Parser;
+use std::fmt::{Debug, Display, Formatter};
+use std::str::FromStr;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -22,9 +25,56 @@ pub struct Config {
     #[clap(long = "fs-cache-dir", env = "FS_CACHE_DIR")]
     pub fs_cache_dir: Option<String>,
 
-    #[clap(long = "debug", env = "DEBUG")]
-    pub debug: bool,
+    #[clap(long = "log-level", env = "LOG_LEVEL")]
+    pub log_level: LogLevel,
 
     #[clap(long = "enable-telemetry", env = "OTEL_ENABLE")]
     pub enable_telemetry: bool,
+}
+
+pub enum LogLevel {
+    Info,
+    Debug,
+    Trace,
+}
+
+impl LogLevel {
+    fn to_str(&self) -> &str {
+        match self {
+            LogLevel::Info => "Info",
+            LogLevel::Debug => "Debug",
+            LogLevel::Trace => "Trace",
+        }
+    }
+}
+
+impl Default for LogLevel {
+    fn default() -> Self {
+        LogLevel::Info
+    }
+}
+
+impl FromStr for LogLevel {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "info" => Ok(LogLevel::Info),
+            "debug" => Ok(LogLevel::Debug),
+            "trace" => Ok(LogLevel::Trace),
+            _ => Err(anyhow!(format!("Unknown log level '{}'", s))),
+        }
+    }
+}
+
+impl Display for LogLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
+impl Debug for LogLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str())
+    }
 }
