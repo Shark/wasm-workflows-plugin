@@ -48,4 +48,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push wasm module to ghcr.io
-      run: wasm-to-oci push wasm-modules/contrib/http-request/target/wasm32-wasi/release/http_request.wasm ghcr.io/shark/wasm-workflows-plugin-http-request:latest
+      run: wasm-to-oci push wasm-modules/contrib/http-request/target/wasm32-wasi/release/http-request.wasm ghcr.io/shark/wasm-workflows-plugin-http-request:latest

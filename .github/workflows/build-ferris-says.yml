@@ -48,4 +48,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push wasm module to ghcr.io
-      run: wasm-to-oci push wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest
+      run: wasm-to-oci push wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris-says.wasm ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest
