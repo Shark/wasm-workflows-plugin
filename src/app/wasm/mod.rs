@@ -1,11 +1,11 @@
-use crate::app::model::{ExecuteTemplateResult, ModulePermissions, PluginInvocation};
+use crate::app::model::ModulePermissions;
 use crate::app::wasm::cache::ModuleCache;
-use crate::app::wasm::interface::{WASIModule, WITModule, WorkflowPlugin};
+use crate::app::wasm::interface::{WASIModule, WorkflowPlugin};
 use anyhow::{anyhow, Error};
-pub use interface::workflow::{Invocation, ParameterParam};
 use tokio::runtime::Handle;
-use tracing::{debug, info_span};
+use tracing::info_span;
 use wasmtime::{Engine, Module};
+use workflow_model::model::{PluginInvocation, PluginResult};
 
 pub mod cache;
 mod image;
@@ -33,7 +33,7 @@ impl<'a> Runner<'a> {
         oci_image: &str,
         invocation: PluginInvocation,
         perms: &Option<ModulePermissions>,
-    ) -> anyhow::Result<ExecuteTemplateResult, WasmError> {
+    ) -> anyhow::Result<PluginResult, WasmError> {
         let engine = setup_engine().map_err(WasmError::EnvironmentSetup)?;
         let mut module: Option<Vec<u8>> = self.cache.get(oci_image).map_err(|err| {
             WasmError::EnvironmentSetup(anyhow!(err).context("Checking Wasm module cache failed"))
@@ -66,21 +66,11 @@ impl<'a> Runner<'a> {
 
         // First try to instantiate the module as WIT and fall back to WASI in case of an error
         let mut plugin: Box<dyn WorkflowPlugin + Send> =
-            match WITModule::try_new(&engine, &module, perms).map_err(|err| {
-                WasmError::EnvironmentSetup(anyhow!(err).context("Creating WIT module failed"))
+            match WASIModule::try_new(&engine, &module, perms).map_err(|err| {
+                WasmError::EnvironmentSetup(anyhow!(err).context("Creating WASI module failed"))
             }) {
-                Ok(wit) => Box::new(wit),
-                Err(err) => {
-                    debug!(?err, "Error instantiating module as WIT");
-                    match WASIModule::try_new(&engine, &module, perms).map_err(|err| {
-                        WasmError::EnvironmentSetup(
-                            anyhow!(err).context("Creating WASI module failed"),
-                        )
-                    }) {
-                        Ok(wasi) => Box::new(wasi),
-                        Err(e) => return Err(e),
-                    }
-                }
+                Ok(wasi) => Box::new(wasi),
+                Err(e) => return Err(e),
             };
         let result = info_span!("wasm.execute_mod")
             .in_scope(|| plugin.run(invocation))

@@ -1,0 +1,46 @@
+{
+  "type": "object",
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["Succeeded", "Failed"]
+    },
+    "message": { "type": "string" },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "artifacts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Artifact"
+          }
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Parameter"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["phase", "message", "outputs"],
+  "additionalProperties": false,
+  "definitions": {
+    "Parameter": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "value": {}
+      }
+    },
+    "Artifact": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "path": {"type": "string"}
+      }
+    }
+  }
+}

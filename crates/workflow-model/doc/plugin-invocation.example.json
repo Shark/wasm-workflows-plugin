@@ -1,0 +1,15 @@
+{
+  "workflow_name": "My Workflow Example",
+  "plugin_options": [
+    {
+      "name": "my option",
+      "value": 42
+    }
+  ],
+  "parameters": [
+    {
+      "name": "text",
+      "value": "Hello World"
+    }
+  ]
+}

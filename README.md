@@ -167,32 +167,34 @@ Input and output parameters between workflow steps work just like you'd expect. 
 
 ### Module Development
 
-Creating a new Wasm module is easy. The preferred way is to implement the [Plugin Interface](#recommended-plugin-interface). If this is not possible, the [WASI Interface](#generic-wasi) provides a generic method that works with any language.
+Creating a new Wasm module is easy and works with every language.
 
-#### Recommended: Plugin Interface
+There are ready-to-use templates for:
 
+* [AssemblyScripts](wasm-modules/templates/assemblyscript/)
+* [Rust](wasm-modules/templates/rust/)
+* [TinyGo](wasm-modules/templates/tinygo/)
+
+You implement a [WASI](https://wasi.dev) module. WASI is a modular system interface for Wasm. The principle is easy: the module is given its input in a file at `/work/input.json`. It is expected to write its results to a file at `/work/result.json` and exit.
+
+We created an easy-to-use wrapper for Rust. The wrapper abstracts all the file handling magic and lets you implement a function with a signature like this:
+
+```rust
+fn run(invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
+    // This is where your code goes
+    
+    PluginResult {
+        phase: Phase::Succeeded,
+        message: "Done".to_string(),
+        outputs: Default::default(),
+    }
+}
 ```
-invoke: function(ctx: invocation) -> node
-```
 
-When you use the Plugin Interface, you just implement the `invoke` function shown in the code block above this paragraph. This method has the advantage that you get passed the module context (parameters, artifacts, custom settings, etc.) as a native object in your language and you return a native object – no need to think about parsing or writing JSON or there like.
+For any other language you can easily parse the JSON yourself:
 
-This is based on the [WebAssembly Interface Types](https://github.com/WebAssembly/interface-types/blob/main/proposals/interface-types/Explainer.md) concept. You'll find the WIT contract at [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit).
-
-This method is usable easily for languages supported by `wit-bindgen`. This repo currently contains a [ready-to-use template for Rust](wasm-modules/templates/rust/).
-
-The `invoke` function takes an `invocation` record and returns a `node` record. Think of records as a structure holding some data. Most importantly, `invocation` holds the input parameters. `node` can specify whether the module executed successfully, provide a result message and can optionally return a list of output parameters.
-
-#### Generic: WASI
-
-[WASI](https://wasi.dev) provides a modular system interface for Wasm. It is the most compatible method of invoking headless Wasm modules. We provide the WASI APIs to your module anyway and the engine will fall back to starting the module as a generic WASI module – calling the `_start` function – if the Plugin Interface is not implemented.
-
-Your life as a module developer won't be as easy though, because you need to read the input from standard input (*stdin*) and respond with your result on standard output (*stdout*). Both will need to be encoded as JSON. The structure of the object you get passed on *stdin* is the same as the one in [`src/app/wasm/workflow.wit`](src/app/wasm/workflow.wit). The same is true for the result in *stdout*. However, for maximum compatibility, the runtime will fallback to a string interpretation of the module output when it doesn't conform to the `node` schema.
-
-There are several examples for WASI-based modules in this repository:
-
-* [AssemblyScript](wasm-modules/templates/assemblyscript/)
-* [TinyGo](wasm-modules/templates/tinygo)
+* PluginInvocation: [Example](crates/workflow-model/doc/plugin-invocation.example.json), [Schema](crates/workflow-model/doc/plugin-invocation.schema.json) 
+* PluginResult: [Example](crates/workflow-model/doc/plugin-result.example.json), [Schema](crates/workflow-model/doc/plugin-result.schema.json)
 
 ### Capabilities
 

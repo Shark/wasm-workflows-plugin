@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "properties": {
+    "workflow_name": { "type":  "string" },
+    "plugin_options": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Parameter"
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Parameter"
+      }
+    }
+  },
+  "required": ["workflow_name", "plugin_options", "parameters"],
+  "additionalProperties": false,
+  "definitions": {
+    "Parameter": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string"},
+        "value": {}
+      }
+    }
+  }
+}

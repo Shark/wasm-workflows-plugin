@@ -1,0 +1,13 @@
+{
+  "phase": "Succeeded",
+  "message": "This was successful",
+  "outputs": {
+    "artifacts": [],
+    "parameters": [
+      {
+        "name": "text",
+        "value": "Guten Tag"
+      }
+    ]
+  }
+}

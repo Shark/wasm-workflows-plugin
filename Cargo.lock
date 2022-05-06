@@ -43,9 +43,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.53"
+version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94a45b455c14666b85fc40a019e8ab9eb75e3a124e05494f5397122bc9eb06e0"
+checksum = "08f9b8508dccb7687a1d6c4ce66b2b0ecef467c94667de27d8d7fe1f8d2a9cdc"
 
 [[package]]
 name = "async-trait"
@@ -238,9 +238,9 @@ dependencies = [
 
 [[package]]
 name = "cap-std"
-version = "0.24.1"
+version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cbe56c8ed4cdf8360deb80dcced538968d3bac45e71befee65e95a0e262caf2"
+checksum = "5d684df5773e4af5c343c466f47151db7e7a4366daab609b4a6bb7a75aecf732"
 dependencies = [
  "cap-primitives",
  "io-extras",
@@ -937,12 +937,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "id-arena"
-version = "2.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
-
-[[package]]
 name = "idna"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1532,21 +1526,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "pulldown-cmark"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffade02495f22453cd593159ea2f59827aae7f53fa8323f756799b670881dcf8"
-dependencies = [
- "bitflags",
- "memchr",
- "unicase 2.6.0",
-]
-
-[[package]]
 name = "quote"
-version = "1.0.15"
+version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "864d3e96a899863136fc6e99f3d7cae289dafe43bf2c5ac19b70df7210c0a145"
+checksum = "a1feb54ed693b93a84e14094943b84b7c4eae204c512b7ccb95ab0c66d278ad1"
 dependencies = [
  "proc-macro2",
 ]
@@ -1918,9 +1901,9 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "syn"
-version = "1.0.86"
+version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a65b3f4ffa0092e9887669db0eae07941f023991ab58ea44da8fe8e2d511c6b"
+checksum = "7ff7c592601f11445996a06f8ad0c27f094a58857c2f89e97974ab9235b92c52"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2512,6 +2495,7 @@ dependencies = [
  "async-trait",
  "axum",
  "axum-macros",
+ "cap-std",
  "clap",
  "itertools",
  "oci-distribution",
@@ -2528,7 +2512,7 @@ dependencies = [
  "wasi-experimental-http-wasmtime",
  "wasmtime",
  "wasmtime-wasi",
- "wit-bindgen-wasmtime",
+ "workflow-model",
  "zstd",
 ]
 
@@ -2897,71 +2881,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wit-bindgen-gen-core"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "anyhow",
- "wit-parser",
-]
-
-[[package]]
-name = "wit-bindgen-gen-rust"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "heck 0.3.3",
- "wit-bindgen-gen-core",
-]
-
-[[package]]
-name = "wit-bindgen-gen-wasmtime"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "heck 0.3.3",
- "wit-bindgen-gen-core",
- "wit-bindgen-gen-rust",
-]
-
-[[package]]
-name = "wit-bindgen-wasmtime"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "anyhow",
- "async-trait",
- "bitflags",
- "thiserror",
- "tracing",
- "wasmtime",
- "wit-bindgen-wasmtime-impl",
-]
-
-[[package]]
-name = "wit-bindgen-wasmtime-impl"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "proc-macro2",
- "syn",
- "wit-bindgen-gen-core",
- "wit-bindgen-gen-wasmtime",
-]
-
-[[package]]
-name = "wit-parser"
-version = "0.1.0"
-source = "git+https://github.com/bytecodealliance/wit-bindgen?rev=e9c7c0a3405845cecd3fe06f3c20ab413302fc73#e9c7c0a3405845cecd3fe06f3c20ab413302fc73"
-dependencies = [
- "anyhow",
- "id-arena",
- "pulldown-cmark",
- "unicode-normalization",
- "unicode-xid",
-]
-
-[[package]]
 name = "witx"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2971,6 +2890,16 @@ dependencies = [
  "log",
  "thiserror",
  "wast 35.0.2",
+]
+
+[[package]]
+name = "workflow-model"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

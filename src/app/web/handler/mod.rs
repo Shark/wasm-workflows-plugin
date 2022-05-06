@@ -1,9 +1,6 @@
 use crate::app::dependencies::DynDependencyProvider;
 use crate::app::model::ModuleSource::OCI;
-use crate::app::model::{
-    ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult, Parameter, Phase,
-    PluginInvocation,
-};
+use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult};
 use crate::app::wasm::{Runner, WasmError};
 use axum::extract::Extension;
 use axum::http::StatusCode;
@@ -11,6 +8,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use axum_macros::debug_handler;
 use tracing::{debug, error};
+use workflow_model::model::{Parameter, Phase, PluginInvocation};
 
 #[debug_handler]
 pub async fn execute_template(
@@ -64,6 +62,7 @@ pub async fn execute_template(
 
     match result {
         Ok(result) => {
+            let result = ExecuteTemplateResult::from_plugin_result(result);
             let response = ExecuteTemplateResponse { node: Some(result) };
             debug!(?response, "Send Response");
             Ok(response.into())

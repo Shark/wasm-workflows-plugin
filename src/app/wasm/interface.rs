@@ -1,38 +1,21 @@
-use crate::app::model::{
-    ExecuteTemplateResult, ModulePermissions, Outputs, Parameter, Phase, PluginInvocation,
-};
+use crate::app::model::ModulePermissions;
 use anyhow::anyhow;
-use std::io::{BufReader, Cursor};
+use std::io::Cursor;
 use tracing::debug;
-use wasi_common::pipe::{ReadPipe, WritePipe};
+use wasi_common::pipe::WritePipe;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Engine, Linker, Module, Store, TypedFunc};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
-use workflow::{Workflow, WorkflowData};
-
-// https://github.com/bytecodealliance/wit-bindgen/pull/126
-wit_bindgen_wasmtime::import!({paths: ["./src/app/wasm/workflow.wit"]});
+use workflow_model::host::WorkingDir;
+use workflow_model::model::{Outputs, Phase, PluginInvocation, PluginResult};
 
 pub trait WorkflowPlugin {
-    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult>;
-}
-
-pub struct WITModule {
-    store: Option<Store<ModuleCtx>>,
-    workflow: workflow::Workflow<ModuleCtx>,
+    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult>;
 }
 
 struct ModuleCtx {
     pub wasi: WasiCtx,
     pub http: HttpCtx,
-    pub plugin_data: WorkflowData,
-}
-
-impl ModuleCtx {
-    fn set_stdin(&mut self, content: Vec<u8>) {
-        let stdin = ReadPipe::new(BufReader::new(Cursor::new(content)));
-        self.wasi.set_stdin(Box::new(stdin));
-    }
 }
 
 fn http_ctx_from_perms(perms: &Option<ModulePermissions>) -> HttpCtx {
@@ -50,13 +33,21 @@ fn http_ctx_from_perms(perms: &Option<ModulePermissions>) -> HttpCtx {
     }
 }
 
-fn common_setup_module(
+fn setup_module(
     engine: &Engine,
     perms: &Option<ModulePermissions>,
+    working_dir: &WorkingDir,
 ) -> anyhow::Result<(Linker<ModuleCtx>, Store<ModuleCtx>)> {
     let mut linker = Linker::new(engine);
     let _ = wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| &mut ctx.wasi)?;
-    let mut wasi = WasiCtxBuilder::new().build();
+    let preopen_working_dir =
+        cap_std::fs::Dir::open_ambient_dir(working_dir.path(), cap_std::ambient_authority())?;
+    let mut wasi = WasiCtxBuilder::new()
+        .preopened_dir(
+            preopen_working_dir,
+            workflow_model::model::WORKING_DIR_PLUGIN_PATH,
+        )?
+        .build();
     let stdout = WritePipe::new_in_memory();
     let stderr = WritePipe::new_in_memory();
     wasi.set_stdout(Box::new(stdout));
@@ -74,7 +65,6 @@ fn common_setup_module(
         ModuleCtx {
             wasi,
             http: http_ctx,
-            plugin_data: WorkflowData {},
         },
     );
     Ok((linker, store))
@@ -109,102 +99,8 @@ fn retrieve_sys_output(
     Ok((stdout, stderr))
 }
 
-impl WITModule {
-    pub fn try_new(
-        engine: &Engine,
-        module: &Module,
-        perms: &Option<ModulePermissions>,
-    ) -> anyhow::Result<Self> {
-        let (mut linker, mut store) = common_setup_module(engine, perms)?;
-
-        let (wf, _instance) = Workflow::instantiate(
-            &mut store,
-            module,
-            &mut linker,
-            |ctx: &mut ModuleCtx| -> &mut WorkflowData { &mut ctx.plugin_data },
-        )
-        .map_err(|err| {
-            anyhow!(err).context("Instantiating Wasm module with Workflow interface type failed")
-        })?;
-
-        Ok(Self::new(store, wf))
-    }
-
-    fn new(store: Store<ModuleCtx>, workflow: workflow::Workflow<ModuleCtx>) -> Self {
-        WITModule {
-            store: Some(store),
-            workflow,
-        }
-    }
-}
-
-impl WorkflowPlugin for WITModule {
-    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
-        let serialized_invocation: SerializedInvocation = invocation.into();
-        let stored_wasm_invocation: StoredWasmInvocation = (&serialized_invocation).into();
-        let store = self.store.as_mut().expect("present store");
-        let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
-        let node = self
-            .workflow
-            .invoke(
-                store,
-                workflow::Invocation {
-                    workflow_name: stored_wasm_invocation.workflow_name,
-                    plugin_options: &stored_wasm_invocation.plugin_options,
-                    parameters: &stored_wasm_invocation.parameters,
-                },
-            )
-            .map_err(|err| anyhow!(err).context("Invoking module failed"))?;
-        self.store = None;
-        let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
-        debug!(?stdout, ?stderr, "Module Output");
-        let outputs: Option<Outputs> = match node.parameters.len() {
-            0 => None,
-            _ => {
-                let out_params = node
-                    .parameters
-                    .into_iter()
-                    .map(|param| -> anyhow::Result<Parameter> {
-                        let parsed_value_json =
-                            serde_json::from_str(&param.value_json).map_err(|err| {
-                                anyhow::Error::new(err).context(format!(
-                                    "Failed to parse output parameter \"{:?}\"",
-                                    param
-                                ))
-                            })?;
-                        Ok(Parameter {
-                            name: param.name,
-                            value: parsed_value_json,
-                        })
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()
-                    .map_err(|err| anyhow!(err).context("Error processing Wasm result node"))?;
-
-                Some(Outputs {
-                    artifacts: None,
-                    parameters: Some(out_params),
-                })
-            }
-        };
-        let phase = match node.phase.parse::<Phase>() {
-            Ok(phase) => phase,
-            Err(_) => {
-                return Err(anyhow::Error::msg(format!(
-                    "Unable to parse \"{}\" as phase in result",
-                    node.phase
-                )))
-            }
-        };
-
-        Ok(ExecuteTemplateResult {
-            phase,
-            message: node.message,
-            outputs,
-        })
-    }
-}
-
 pub struct WASIModule {
+    working_dir: WorkingDir,
     store: Option<Store<ModuleCtx>>,
     workflow: TypedFunc<(), ()>,
 }
@@ -215,28 +111,29 @@ impl WASIModule {
         module: &Module,
         perms: &Option<ModulePermissions>,
     ) -> anyhow::Result<Self> {
-        let (mut linker, mut store) = common_setup_module(engine, perms)?;
+        let working_dir = WorkingDir::try_new()?;
+        let (mut linker, mut store) = setup_module(engine, perms, &working_dir)?;
         linker.module(&mut store, "", module)?;
         let workflow = linker
             .get_default(&mut store, "")?
             .typed::<(), (), _>(&store)?;
 
-        Ok(Self::new(store, workflow))
+        Ok(Self::new(working_dir, store, workflow))
     }
 
-    fn new(store: Store<ModuleCtx>, workflow: TypedFunc<(), ()>) -> Self {
+    fn new(working_dir: WorkingDir, store: Store<ModuleCtx>, workflow: TypedFunc<(), ()>) -> Self {
         WASIModule {
-            store: Some(store),
+            working_dir,
             workflow,
+            store: Some(store),
         }
     }
 }
 
 impl WorkflowPlugin for WASIModule {
-    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<ExecuteTemplateResult> {
-        let invocation = serde_json::to_string(&invocation)?.as_bytes().to_owned();
+    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
+        self.working_dir.set_input(&invocation)?;
         let mut store = self.store.as_mut().expect("present store");
-        store.data_mut().set_stdin(invocation);
         let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
 
         match self.workflow.call(&mut store, ()) {
@@ -244,101 +141,18 @@ impl WorkflowPlugin for WASIModule {
                 self.store = None;
                 let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
                 debug!(?stdout, ?stderr, "Module Output");
-                match serde_json::from_str(&stdout) {
-                    Ok(result) => Ok(result),
-                    Err(err) => {
-                        debug!(?err, "Error parsing stdout as ExecuteTemplateResult");
-                        Ok(ExecuteTemplateResult {
-                            phase: Phase::Succeeded,
-                            message: stdout,
-                            outputs: None,
-                        })
-                    }
-                }
+                self.working_dir.result()
             }
             Err(e) => {
                 self.store = None;
                 let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
                 debug!(?stdout, ?stderr, "Module Output");
-                Ok(ExecuteTemplateResult {
+                Ok(PluginResult {
                     phase: Phase::Failed,
                     message: e.to_string(),
-                    outputs: None,
+                    outputs: Outputs::default(),
                 })
             }
-        }
-    }
-}
-
-struct SerializedParameter {
-    name: String,
-    value_json: String,
-}
-
-impl<'a> From<Parameter> for SerializedParameter {
-    fn from(parameter: Parameter) -> Self {
-        SerializedParameter {
-            name: parameter.name,
-            value_json: parameter.value.to_string(),
-        }
-    }
-}
-
-struct SerializedInvocation {
-    workflow_name: String,
-    serialized_plugin_options: Vec<SerializedParameter>,
-    serialized_parameters: Vec<SerializedParameter>,
-}
-
-impl<'a> From<PluginInvocation> for SerializedInvocation {
-    fn from(invocation: PluginInvocation) -> Self {
-        let serialized_plugin_options = invocation
-            .plugin_options
-            .into_iter()
-            .map(From::from)
-            .collect::<Vec<SerializedParameter>>();
-        let serialized_parameters = invocation
-            .parameters
-            .into_iter()
-            .map(From::from)
-            .collect::<Vec<SerializedParameter>>();
-        SerializedInvocation {
-            workflow_name: invocation.workflow_name,
-            serialized_plugin_options,
-            serialized_parameters,
-        }
-    }
-}
-
-impl<'a> From<&'a SerializedParameter> for workflow::ParameterParam<'a> {
-    fn from(serialized: &'a SerializedParameter) -> Self {
-        workflow::ParameterParam {
-            name: &serialized.name,
-            value_json: &serialized.value_json,
-        }
-    }
-}
-
-struct StoredWasmInvocation<'a> {
-    workflow_name: &'a str,
-    plugin_options: Vec<workflow::ParameterParam<'a>>,
-    parameters: Vec<workflow::ParameterParam<'a>>,
-}
-
-impl<'a> From<&'a SerializedInvocation> for StoredWasmInvocation<'a> {
-    fn from(serialized: &'a SerializedInvocation) -> Self {
-        StoredWasmInvocation {
-            workflow_name: &serialized.workflow_name,
-            plugin_options: serialized
-                .serialized_plugin_options
-                .iter()
-                .map(From::from)
-                .collect(),
-            parameters: serialized
-                .serialized_parameters
-                .iter()
-                .map(From::from)
-                .collect(),
         }
     }
 }

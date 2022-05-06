@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
-use std::str::FromStr;
+use workflow_model::model::{Artifact, Parameter, Phase};
 
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
@@ -36,28 +35,6 @@ pub struct Outputs {
     pub parameters: Option<Vec<Parameter>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-#[allow(dead_code)]
-pub struct Artifact {
-    pub name: String,
-    pub path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub s3: Option<S3Artifact>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[allow(dead_code)]
-pub struct S3Artifact {
-    pub key: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-#[allow(dead_code)]
-pub struct Parameter {
-    pub name: String,
-    pub value: serde_json::Value,
-}
-
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Plugin {
@@ -70,7 +47,7 @@ pub struct WasmPluginConfig {
     pub module: ModuleSource,
     pub permissions: Option<ModulePermissions>,
     #[serde(flatten)]
-    pub extra: HashMap<String, Value>,
+    pub extra: HashMap<String, serde_json::Value>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -118,7 +95,7 @@ pub struct ExecuteTemplateResponse {
     pub node: Option<ExecuteTemplateResult>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 #[allow(dead_code)]
 pub struct ExecuteTemplateResult {
     pub phase: Phase,
@@ -127,28 +104,24 @@ pub struct ExecuteTemplateResult {
     pub outputs: Option<Outputs>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Phase {
-    Succeeded,
-    Failed,
-}
-
-impl FromStr for Phase {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Phase, ()> {
-        match s {
-            "Succeeded" => Ok(Phase::Succeeded),
-            "Failed" => Ok(Phase::Failed),
-            _ => Err(()),
+impl ExecuteTemplateResult {
+    pub(crate) fn from_plugin_result(src: workflow_model::model::PluginResult) -> Self {
+        let outputs = match !src.outputs.parameters.is_empty() || !src.outputs.artifacts.is_empty()
+        {
+            true => {
+                let parameters = Some(src.outputs.parameters);
+                let artifacts = None;
+                Some(Outputs {
+                    artifacts,
+                    parameters,
+                })
+            }
+            false => None,
+        };
+        Self {
+            phase: src.phase,
+            message: src.message,
+            outputs,
         }
     }
-}
-
-/// PluginInvocation is a single Wasm module invocation
-#[derive(Serialize, Deserialize, Debug)]
-pub struct PluginInvocation {
-    pub workflow_name: String,
-    pub plugin_options: Vec<Parameter>,
-    pub parameters: Vec<Parameter>,
 }
