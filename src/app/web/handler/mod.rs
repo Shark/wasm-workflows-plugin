@@ -1,7 +1,7 @@
 use crate::app::dependencies::DynDependencyProvider;
 use crate::app::model::ModuleSource::OCI;
 use crate::app::model::{ExecuteTemplateRequest, ExecuteTemplateResponse, ExecuteTemplateResult};
-use crate::app::wasm::{Runner, WasmError};
+use crate::app::wasm::WasmError;
 use axum::extract::Extension;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
@@ -40,21 +40,13 @@ pub async fn execute_template(
         plugin_options,
     };
 
-    let cache = deps.get_module_cache();
-
     // Spawn the module runner in a new tokio thread
     // Note: Added this because without the thread, the program would block when using
     // wasi-experimental-http in the module. But only on the second module run. This probably had
     // something to do with reqwest and connection pooling, but the thread resolved the problem
     // as well and was an easier solution.
     let result = tokio::task::spawn_blocking(move || {
-        let insecure_oci_registries: Vec<&str> = deps
-            .get_config()
-            .insecure_oci_registries
-            .iter()
-            .map(AsRef::as_ref)
-            .collect();
-        let runner = Runner::new(&cache, &insecure_oci_registries);
+        let runner = deps.get_runner();
         runner.run(&image, invocation, &permissions)
     })
     .await

@@ -26,12 +26,32 @@ pub struct Config {
     pub fs_cache_dir: Option<String>,
 
     #[clap(long = "log-level", env = "LOG_LEVEL")]
-    pub log_level: LogLevel,
+    log_level: Option<LogLevel>,
 
     #[clap(long = "enable-telemetry", env = "OTEL_ENABLE")]
     pub enable_telemetry: bool,
+
+    #[clap(long = "mode", env = "MODE")]
+    mode: Option<Mode>,
 }
 
+impl Config {
+    pub fn log_level(&self) -> LogLevel {
+        match self.log_level.as_ref() {
+            Some(log_level) => log_level.clone(),
+            None => LogLevel::default(),
+        }
+    }
+
+    pub fn mode(&self) -> Mode {
+        match self.mode.as_ref() {
+            Some(mode) => mode.clone(),
+            None => Mode::default(),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub enum LogLevel {
     Info,
     Debug,
@@ -54,6 +74,12 @@ impl Default for LogLevel {
     }
 }
 
+impl Display for LogLevel {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.to_str())
+    }
+}
+
 impl FromStr for LogLevel {
     type Err = anyhow::Error;
 
@@ -67,14 +93,41 @@ impl FromStr for LogLevel {
     }
 }
 
-impl Display for LogLevel {
+#[derive(Clone, Debug)]
+pub enum Mode {
+    Local,
+    Distributed,
+}
+
+impl Mode {
+    fn to_str(&self) -> &str {
+        match self {
+            Mode::Local => "Local",
+            Mode::Distributed => "Distributed",
+        }
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Local
+    }
+}
+
+impl Display for Mode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.to_str())
     }
 }
 
-impl Debug for LogLevel {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.write_str(self.to_str())
+impl FromStr for Mode {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "local" => Ok(Mode::Local),
+            "distributed" => Ok(Mode::Distributed),
+            _ => Err(anyhow!(format!("Unknown mode '{}'", s))),
+        }
     }
 }

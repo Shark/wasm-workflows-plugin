@@ -13,6 +13,15 @@ pub trait ModuleCache {
     fn purge(&self, max_size_mib: u64) -> Result<()>;
 }
 
+pub(crate) fn create_module_cache(
+    fs_cache_dir: &Option<String>,
+) -> Box<dyn ModuleCache + Send + Sync> {
+    match fs_cache_dir {
+        Some(dir) => Box::new(new_fs_cache(PathBuf::from(dir))),
+        None => Box::new(new_nop_cache()),
+    }
+}
+
 pub fn new_fs_cache(base_dir: PathBuf) -> FSCache {
     FSCache { base_dir }
 }
