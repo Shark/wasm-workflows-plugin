@@ -25,11 +25,14 @@ opentelemetry-jaeger = "0.16.0"
 anyhow = "1.0.53"
 itertools = "0.10.3"
 zstd = "0.10.0"
+base64 = "0.13.0"
+openssl = { version = "0.10.40", features = ["vendored"] } # statically links openssl in the binary
 
 tokio = { version = "1.17.0", features = ["full"] }
 async-trait = "0.1.53"
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
+serde_yaml = "0.8.24"
 tower-http = { version = "0.2.3", features = ["trace", "set-header"] }
 clap = { version = "3.1.0", features = ["derive", "env"] }
 
@@ -42,8 +45,14 @@ wasi-common = "0.34.1"
 oci-distribution = "0.8.1"
 wasi-experimental-http-wasmtime = { git = "https://github.com/deislabs/wasi-experimental-http.git", rev = "4ed321d6943f75546e38bba80e14a59797aa29de" }
 cap-std = "0.24.3"
+k8s-openapi = { version = "0.14.0", features = ["v1_22"] }
+kube = { version = "0.72.0", features = ["runtime"] }
+kube-client = "0.72.0"
 
 workflow-model = { path = "./crates/workflow-model", features = ["host"] }
+
+[dev-dependencies]
+indoc = "1.0.6"
 
 # https://github.com/johnthagen/min-sized-rust
 [profile.release]

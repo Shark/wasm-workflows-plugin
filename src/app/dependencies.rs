@@ -1,6 +1,9 @@
 use crate::app::config::{Config, Mode};
+use crate::app::k8s;
+use crate::app::wasm::distributed::DistributedRunner;
 use crate::app::wasm::local::{cache, LocalRunner};
 use crate::app::wasm::Runner;
+use anyhow::anyhow;
 use clap::Parser;
 use std::sync::Arc;
 
@@ -13,12 +16,25 @@ pub type DynDependencyProvider = Arc<dyn DependencyProvider + Send + Sync>;
 
 struct RuntimeDependencyProvider {
     config: Config,
+    client: Option<kube::Client>,
 }
 
-pub fn initialize() -> anyhow::Result<DynDependencyProvider> {
+pub async fn initialize() -> anyhow::Result<DynDependencyProvider> {
     let config = Config::parse();
+    let client = match k8s::create_kube_client(&config).await {
+        Ok(client) => Some(client),
+        Err(why) => {
+            if config.mode() == Mode::Distributed {
+                let why =
+                    anyhow!(why).context("Kube client is required because mode is distributed");
+                return Err(why);
+            }
+            None
+        }
+    };
 
-    Ok(Arc::new(RuntimeDependencyProvider { config }))
+    let provider = RuntimeDependencyProvider { config, client };
+    Ok(Arc::new(provider))
 }
 
 impl DependencyProvider for RuntimeDependencyProvider {
@@ -36,7 +52,10 @@ impl DependencyProvider for RuntimeDependencyProvider {
                 Box::new(runner)
             }
             Mode::Distributed => {
-                unimplemented!()
+                let client = self.client.as_ref().unwrap().clone();
+                let namespace = self.config.plugin_namespace.to_owned();
+                let runner = DistributedRunner::new(client, namespace);
+                Box::new(runner)
             }
         }
     }

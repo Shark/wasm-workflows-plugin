@@ -9,6 +9,7 @@ pub mod app;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let deps = app::dependencies::initialize()
+        .await
         .map_err(|err| anyhow!(err).context("Initializing dependencies failed"))?;
     let config = deps.get_config();
     let log_level = config.log_level();

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use workflow_model::model::{Artifact, Parameter, Phase};
 
+pub mod argo;
+
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct ExecuteTemplateRequest {

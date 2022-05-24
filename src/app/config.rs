@@ -33,6 +33,28 @@ pub struct Config {
 
     #[clap(long = "mode", env = "MODE")]
     mode: Option<Mode>,
+
+    #[clap(long = "plugin-namespace", env = "PLUGIN_NAMESPACE")]
+    pub plugin_namespace: Option<String>,
+
+    #[clap(long = "argo-controller-configmap")]
+    pub argo_controller_configmap: Option<String>,
+
+    #[clap(long = "k8s-api-url", env = "K8S_API_URL")]
+    pub k8s_api_url: Option<String>,
+
+    #[clap(env = "K8S_API_CA_CRT")]
+    pub k8s_api_ca_crt: Option<String>,
+
+    /// k8s_api_ca_crt_b64 is particularly useful for environments which don't support newlines in env variables
+    #[clap(long = "k8s-api-ca-crt-b64", env = "K8S_API_CA_CRT_B64")]
+    pub k8s_api_ca_crt_b64: Option<String>,
+
+    #[clap(long = "k8s-api-namespace", env = "K8S_API_NAMESPACE")]
+    pub k8s_api_namespace: Option<String>,
+
+    #[clap(long = "k8s-api-token", env = "K8S_API_TOKEN")]
+    pub k8s_api_token: Option<String>,
 }
 
 impl Config {
@@ -48,6 +70,18 @@ impl Config {
             Some(mode) => mode.clone(),
             None => Mode::default(),
         }
+    }
+
+    /// Returns k8s_api_ca_crt if present, falls back to decoding k8s_api_ca_crt_b64 if present; otherwise returns None
+    pub fn k8s_api_ca_crt(&self) -> anyhow::Result<Option<String>> {
+        if let Some(ca_crt_b64) = self.k8s_api_ca_crt_b64.as_ref() {
+            return Ok(Some(ca_crt_b64.to_owned()));
+        }
+        if let Some(ca_crt) = self.k8s_api_ca_crt.as_ref() {
+            let ca_crt_b64 = base64::encode(ca_crt);
+            return Ok(Some(ca_crt_b64));
+        }
+        Ok(None)
     }
 }
 
@@ -93,7 +127,7 @@ impl FromStr for LogLevel {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Mode {
     Local,
     Distributed,

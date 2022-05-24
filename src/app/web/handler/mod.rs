@@ -45,9 +45,10 @@ pub async fn execute_template(
     // wasi-experimental-http in the module. But only on the second module run. This probably had
     // something to do with reqwest and connection pooling, but the thread resolved the problem
     // as well and was an easier solution.
-    let result = tokio::task::spawn_blocking(move || {
+    // TODO as this changed from spawn_blocking to spawn, this might be a problem again!
+    let result = tokio::task::spawn(async move {
         let runner = deps.get_runner();
-        runner.run(&image, invocation, &permissions)
+        runner.run(&image, invocation, &permissions).await
     })
     .await
     .expect("able to join runner task");

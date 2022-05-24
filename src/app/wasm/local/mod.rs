@@ -33,7 +33,7 @@ impl LocalRunner {
 #[async_trait]
 impl Runner for LocalRunner {
     #[tracing::instrument(name = "wasm.run", skip(self))]
-    fn run(
+    async fn run(
         &self,
         oci_image: &str,
         invocation: PluginInvocation,

@@ -3,11 +3,12 @@ use anyhow::Error;
 use async_trait::async_trait;
 use workflow_model::model::{PluginInvocation, PluginResult};
 
+pub mod distributed;
 pub mod local;
 
 #[async_trait]
 pub trait Runner {
-    fn run(
+    async fn run(
         &self,
         oci_image: &str,
         invocation: PluginInvocation,

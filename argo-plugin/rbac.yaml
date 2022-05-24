@@ -1,0 +1,41 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wasm-workflows-plugin
+  namespace: argo-workflows
+rules:
+- apiGroups: [""] # "" indicates the core API group
+  resources: ["pods", "configmaps"]
+  verbs: ["get", "watch", "list", "create", "update", "delete"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wasm-workflows-plugin
+  namespace: argo-workflows
+
+---
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: wasm-workflows-plugin
+  namespace: argo-workflows
+  annotations:
+    kubernetes.io/service-account.name: wasm-workflows-plugin
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wasm-workflows-plugin
+  namespace: argo-workflows
+subjects:
+- kind: ServiceAccount
+  name: wasm-workflows-plugin
+roleRef:
+  kind: Role
+  name: wasm-workflows-plugin
+  apiGroup: rbac.authorization.k8s.io
