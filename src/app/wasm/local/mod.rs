@@ -4,10 +4,9 @@ use crate::app::wasm::local::interface::{WASIModule, WorkflowPlugin};
 use crate::app::wasm::{Runner, WasmError};
 use anyhow::anyhow;
 use async_trait::async_trait;
-use tokio::runtime::Handle;
 use tracing::info_span;
 use wasmtime::{Engine, Module};
-use workflow_model::model::{PluginInvocation, PluginResult};
+use workflow_model::model::{PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
 pub mod cache;
 mod image;
@@ -32,12 +31,13 @@ impl LocalRunner {
 
 #[async_trait]
 impl Runner for LocalRunner {
-    #[tracing::instrument(name = "wasm.run", skip(self))]
+    #[tracing::instrument(name = "wasm.run", skip(self, artifact_repo_config))]
     async fn run(
         &self,
         oci_image: &str,
         invocation: PluginInvocation,
         perms: &Option<ModulePermissions>,
+        artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<PluginResult, WasmError> {
         let engine = setup_engine().map_err(WasmError::EnvironmentSetup)?;
         let mut module: Option<Vec<u8>> = self.cache.get(oci_image).map_err(|err| {
@@ -49,13 +49,12 @@ impl Runner for LocalRunner {
                 .iter()
                 .map(|i| i.as_str())
                 .collect();
-            let pulled_mod: Vec<u8> = Handle::current().block_on(async {
+            let pulled_mod: Vec<u8> =
                 pull(oci_image, &insecure_oci_registries)
                     .await
                     .map_err(|err| {
                         WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
-                    })
-            })?;
+                    })?;
             let precompiled_mod =
                 tracing::trace_span!("engine.precompile_module").in_scope(|| {
                     engine.precompile_module(&pulled_mod).map_err(|err| {
@@ -76,14 +75,17 @@ impl Runner for LocalRunner {
 
         // First try to instantiate the module as WIT and fall back to WASI in case of an error
         let mut plugin: Box<dyn WorkflowPlugin + Send> =
-            match WASIModule::try_new(&engine, &module, perms).map_err(|err| {
-                WasmError::EnvironmentSetup(anyhow!(err).context("Creating WASI module failed"))
-            }) {
+            match WASIModule::try_new(&engine, &module, perms, artifact_repo_config)
+                .await
+                .map_err(|err| {
+                    WasmError::EnvironmentSetup(anyhow!(err).context("Creating WASI module failed"))
+                }) {
                 Ok(wasi) => Box::new(wasi),
                 Err(e) => return Err(e),
             };
         let result = info_span!("wasm.execute_mod")
             .in_scope(|| plugin.run(invocation))
+            .await
             .map_err(|err| {
                 WasmError::Invocation(anyhow!(err).context("Wasm module invocation failed"))
             })?;
@@ -103,6 +105,7 @@ async fn pull<'a>(
 }
 
 pub fn setup_engine() -> anyhow::Result<wasmtime::Engine> {
-    let config = wasmtime::Config::new();
+    let mut config = wasmtime::Config::new();
+    config.async_support(true);
     Engine::new(&config)
 }

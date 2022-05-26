@@ -9,7 +9,7 @@ use kube::{Api, ResourceExt};
 use std::collections::BTreeMap;
 use std::time::Duration;
 use tokio::time::sleep;
-use workflow_model::model::{Phase, PluginInvocation, PluginResult};
+use workflow_model::model::{Phase, PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
 pub struct DistributedRunner {
     client: kube::Client,
@@ -24,12 +24,13 @@ impl DistributedRunner {
 
 #[async_trait]
 impl Runner for DistributedRunner {
-    #[tracing::instrument(name = "wasm.run", skip(self))]
+    #[tracing::instrument(name = "wasm.run", skip(self, artifact_repo_config))]
     async fn run(
         &self,
         oci_image: &str,
         invocation: PluginInvocation,
         _perms: &Option<ModulePermissions>,
+        artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<PluginResult, WasmError> {
         let (config_maps, namespace): (Api<ConfigMap>, &str) = {
             let client = self.client.clone();
@@ -40,13 +41,23 @@ impl Runner for DistributedRunner {
         };
         let input_json = serde_json::to_string(&invocation)
             .map_err(|e| WasmError::EnvironmentSetup(anyhow!(e)))?;
+        let mut data: BTreeMap<String, String> = BTreeMap::new();
+        data.insert("input.json".into(), input_json);
+        if let Some(artifact_repo_config) = &artifact_repo_config {
+            let artifact_repo_config_json = serde_json::to_string(&artifact_repo_config)
+                .map_err(|e| WasmError::EnvironmentSetup(anyhow!(e)))?;
+            data.insert(
+                "artifact-repo-config.json".into(),
+                artifact_repo_config_json,
+            );
+        }
         let config_map = ConfigMap {
             metadata: ObjectMeta {
                 namespace: Some(namespace.to_owned()),
                 generate_name: Some(NAME_PREFIX.into()),
                 ..Default::default()
             },
-            data: Some(BTreeMap::from([("input.json".into(), input_json)])),
+            data: Some(data),
             ..Default::default()
         };
         let pp = PostParams::default();

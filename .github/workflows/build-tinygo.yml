@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/templates/tinygo/**'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest

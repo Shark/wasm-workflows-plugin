@@ -20,12 +20,12 @@ spec:
         runAsNonRoot: true
         runAsUser: 65532 # nonroot
       resources:
-        requests:
-          memory: "64Mi"
-          cpu: "250m"
         limits:
-          memory: "128Mi"
-          cpu: "500m"
+          cpu: 1024m
+          memory: 1024Mi
+        requests:
+          cpu: 1024m
+          memory: 512Mi
       env:
       - name: PLUGIN_NAMESPACE
         valueFrom:
@@ -52,4 +52,7 @@ spec:
         value: debug
       - name: MODE
         value: distributed
-
+      - name: INSECURE_OCI_REGISTRIES
+        value: 192.168.64.2:32000
+      - name: ARGO_CONTROLLER_CONFIGMAP
+        value: workflow-controller-configmap

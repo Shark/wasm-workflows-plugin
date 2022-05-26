@@ -15,7 +15,8 @@ async fn main() -> anyhow::Result<()> {
     let log_level = config.log_level();
 
     app_tracing::setup(&log_level, config.enable_telemetry).expect("setup tracing");
-    tracing::debug!(?config, "Loaded Config");
+    tracing::debug!(?config, "Config");
+    tracing::debug!(artifact_repository_config = ?deps.get_artifact_repository_config(), "Artifact Repository Config");
     tracing::info!("Log level is {}", log_level);
     tracing::info!("Mode is {}", config.mode());
 

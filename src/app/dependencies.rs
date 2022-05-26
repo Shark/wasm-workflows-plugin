@@ -3,13 +3,15 @@ use crate::app::k8s;
 use crate::app::wasm::distributed::DistributedRunner;
 use crate::app::wasm::local::{cache, LocalRunner};
 use crate::app::wasm::Runner;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use clap::Parser;
 use std::sync::Arc;
+use workflow_model::model::S3ArtifactRepositoryConfig;
 
 pub trait DependencyProvider {
     fn get_config(&self) -> &Config;
     fn get_runner(&self) -> Box<dyn Runner + Send + Sync>;
+    fn get_artifact_repository_config(&self) -> Option<S3ArtifactRepositoryConfig>;
 }
 
 pub type DynDependencyProvider = Arc<dyn DependencyProvider + Send + Sync>;
@@ -17,6 +19,7 @@ pub type DynDependencyProvider = Arc<dyn DependencyProvider + Send + Sync>;
 struct RuntimeDependencyProvider {
     config: Config,
     client: Option<kube::Client>,
+    artifact_repository_config: Option<S3ArtifactRepositoryConfig>,
 }
 
 pub async fn initialize() -> anyhow::Result<DynDependencyProvider> {
@@ -32,8 +35,28 @@ pub async fn initialize() -> anyhow::Result<DynDependencyProvider> {
             None
         }
     };
+    let artifact_repository_config = match &config.argo_controller_configmap {
+        Some(name) => match &client {
+            Some(client) => {
+                let config = k8s::fetch_artifact_repository_config(
+                    client,
+                    config.plugin_namespace.as_deref(),
+                    name,
+                )
+                .await
+                .context("Fetching artifact repository config")?;
+                Some(config)
+            }
+            None => None,
+        },
+        None => None,
+    };
 
-    let provider = RuntimeDependencyProvider { config, client };
+    let provider = RuntimeDependencyProvider {
+        config,
+        client,
+        artifact_repository_config,
+    };
     Ok(Arc::new(provider))
 }
 
@@ -58,5 +81,11 @@ impl DependencyProvider for RuntimeDependencyProvider {
                 Box::new(runner)
             }
         }
+    }
+
+    fn get_artifact_repository_config(&self) -> Option<S3ArtifactRepositoryConfig> {
+        self.artifact_repository_config
+            .as_ref()
+            .map(|cfg| cfg.to_owned())
     }
 }

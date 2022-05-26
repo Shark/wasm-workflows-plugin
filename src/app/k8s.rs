@@ -1,9 +1,13 @@
 use crate::app::config::Config;
-use anyhow::anyhow;
+use crate::app::model::argo::ArtifactRepositoryConfig;
+use anyhow::{anyhow, Context};
+use k8s_openapi::api::core::v1::{ConfigMap, Secret};
 use kube_client::config::{
-    AuthInfo, Cluster, Context, KubeConfigOptions, Kubeconfig, NamedAuthInfo, NamedCluster,
-    NamedContext,
+    AuthInfo, Cluster, Context as KubeContext, KubeConfigOptions, Kubeconfig, NamedAuthInfo,
+    NamedCluster, NamedContext,
 };
+use kube_client::Api;
+use workflow_model::model::S3ArtifactRepositoryConfig;
 
 async fn try_given_kubeconfig(config: &Config) -> anyhow::Result<Option<kube::Config>> {
     let k8s_api_ca_crt = config.k8s_api_ca_crt()?;
@@ -39,7 +43,7 @@ async fn try_given_kubeconfig(config: &Config) -> anyhow::Result<Option<kube::Co
         }],
         contexts: vec![NamedContext {
             name: "k8s".into(),
-            context: Context {
+            context: KubeContext {
                 cluster: "k8s".into(),
                 user: "k8s".into(),
                 namespace: Some(k8s_api_namespace),
@@ -70,4 +74,93 @@ pub async fn create_kube_client(config: &Config) -> anyhow::Result<kube::Client>
         None => kube::Config::infer().await?,
     };
     kube::Client::try_from(config).map_err(|e| anyhow!(e))
+}
+
+pub async fn fetch_artifact_repository_config(
+    client: &kube::Client,
+    ns: Option<&str>,
+    configmap_name: &str,
+) -> anyhow::Result<S3ArtifactRepositoryConfig> {
+    let config_maps: Api<ConfigMap> = {
+        let client = client.clone();
+        match ns {
+            Some(ns) => Api::namespaced(client, ns),
+            None => Api::default_namespaced(client),
+        }
+    };
+    let secrets: Api<Secret> = {
+        let client = client.clone();
+        match ns {
+            Some(ns) => Api::namespaced(client, ns),
+            None => Api::default_namespaced(client),
+        }
+    };
+
+    let config_map = config_maps
+        .get(configmap_name)
+        .await
+        .context("getting ConfigMap")?;
+    if config_map.data.is_none() {
+        return Err(anyhow!("Did not find data in the ConfigMap"));
+    }
+    let config = config_map.data.unwrap();
+    let config = config.get("artifactRepository");
+    if config.is_none() {
+        return Err(anyhow!(
+            "Did not find artifactRepository key in ConfigMapData"
+        ));
+    }
+    let config: ArtifactRepositoryConfig = serde_yaml::from_str(config.unwrap())?;
+    let access_key_secret = secrets
+        .get(&config.s3_config.access_key_secret.name)
+        .await
+        .context("getting access_key_secret")?;
+    let secret_key_secret = secrets
+        .get(&config.s3_config.secret_key_secret.name)
+        .await
+        .context("getting secret_key_secret")?;
+
+    let access_key: String = match access_key_secret.data {
+        Some(data) => {
+            let key = &config.s3_config.access_key_secret.key;
+            match data.get(key) {
+                Some(data) => String::from_utf8(data.0.to_owned())
+                    .context(format!("Parsing data in key {}", key))?,
+                None => {
+                    return Err(anyhow!(format!(
+                        "Did not find the key {} in the access_key_secret",
+                        key
+                    )))
+                }
+            }
+        }
+        None => return Err(anyhow!("Did not find data in the access_key_secret")),
+    };
+    let secret_key: String = match secret_key_secret.data {
+        Some(data) => {
+            let key = &config.s3_config.secret_key_secret.key;
+            match data.get(key) {
+                Some(data) => String::from_utf8(data.0.to_owned())
+                    .context(format!("Parsing data in key {}", key))?,
+                None => {
+                    return Err(anyhow!(format!(
+                        "Did not find the key {} in the secret_key_secret",
+                        key
+                    )))
+                }
+            }
+        }
+        None => return Err(anyhow!("Did not find data in the secret_key_secret")),
+    };
+
+    let config = S3ArtifactRepositoryConfig {
+        access_key,
+        secret_key,
+        bucket: config.s3_config.bucket,
+        endpoint: config.s3_config.endpoint,
+        region: config.s3_config.region,
+        insecure: config.s3_config.insecure,
+        path_style_endpoint: config.s3_config.path_style_endpoint,
+    };
+    Ok(config)
 }

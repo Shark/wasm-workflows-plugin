@@ -8,16 +8,16 @@ pub struct Parameter {
     pub value: serde_json::Value,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(dead_code)]
-pub struct Artifact {
+pub struct ArtifactRef {
     pub name: String,
     pub path: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub s3: Option<S3Artifact>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct S3Artifact {
     pub key: String,
@@ -52,7 +52,7 @@ impl FromStr for Phase {
 #[derive(Serialize, Deserialize, Debug, Default)]
 #[allow(dead_code)]
 pub struct Outputs {
-    pub artifacts: Vec<Artifact>,
+    pub artifacts: Vec<ArtifactRef>,
     pub parameters: Vec<Parameter>,
 }
 
@@ -62,8 +62,22 @@ pub struct PluginInvocation {
     pub workflow_name: String,
     pub plugin_options: Vec<Parameter>,
     pub parameters: Vec<Parameter>,
+    pub artifacts: Vec<ArtifactRef>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct S3ArtifactRepositoryConfig {
+    pub access_key: String,
+    pub secret_key: String,
+    pub bucket: String,
+    pub endpoint: String,
+    pub region: String,
+    pub insecure: bool,
+    pub path_style_endpoint: bool,
 }
 
 pub const WORKING_DIR_PLUGIN_PATH: &str = "/work";
+pub const INPUT_ARTIFACTS_PATH: &str = "artifacts-in";
+pub const OUTPUT_ARTIFACTS_PATH: &str = "artifacts-out";
 pub const INPUT_FILE_NAME: &str = "input.json";
 pub const RESULT_FILE_NAME: &str = "result.json";

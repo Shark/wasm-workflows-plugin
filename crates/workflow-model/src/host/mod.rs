@@ -1,5 +1,6 @@
 use super::model::{INPUT_FILE_NAME, RESULT_FILE_NAME};
-use crate::model::{PluginInvocation, PluginResult};
+use crate::model::{PluginInvocation, PluginResult, INPUT_ARTIFACTS_PATH, OUTPUT_ARTIFACTS_PATH};
+use anyhow::Context;
 use std::fs::File;
 use std::path::Path;
 use tempfile::TempDir;
@@ -8,10 +9,22 @@ pub struct WorkingDir {
     temp_dir: TempDir,
 }
 
+pub mod artifacts;
+
 impl WorkingDir {
-    pub fn try_new() -> anyhow::Result<Self> {
+    pub async fn try_new() -> anyhow::Result<Self> {
         // Create working directory as TempDir
         let temp_dir = TempDir::new()?;
+        tokio::fs::DirBuilder::new()
+            .recursive(true)
+            .create(temp_dir.path().join(INPUT_ARTIFACTS_PATH))
+            .await
+            .context("Creating input artifacts dir")?;
+        tokio::fs::DirBuilder::new()
+            .recursive(true)
+            .create(temp_dir.path().join(OUTPUT_ARTIFACTS_PATH))
+            .await
+            .context("Creating output artifacts dir")?;
 
         Ok(Self { temp_dir })
     }

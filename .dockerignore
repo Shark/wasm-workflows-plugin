@@ -2,3 +2,11 @@ demo-mod
 plugin
 Dockerfile
 target
+wasm-modules/contrib/http-request/target
+wasm-modules/contrib/image-processor/target
+wasm-modules/examples/ferris-says/target
+wasm-modules/examples/text2qr/target
+wasm-modules/templates/assemblyscript/node_modules
+wasm-modules/templates/assemblyscript/*.wasm
+wasm-modules/templates/rust/target
+wasm-modules/templates/tinygo/*.wasm

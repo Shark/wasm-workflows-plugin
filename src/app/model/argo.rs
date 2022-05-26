@@ -2,27 +2,29 @@ use serde::Deserialize;
 use std::fmt::Debug;
 
 #[derive(Deserialize, PartialEq, Debug)]
-pub struct ArtifactRepositoryConfig {
+pub(crate) struct ArtifactRepositoryConfig {
     #[serde(rename = "s3")]
-    s3_config: S3Config,
+    pub(crate) s3_config: S3Config,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
-struct S3Config {
+pub(crate) struct S3Config {
     #[serde(rename = "accessKeySecret")]
-    access_key_secret: SecretRef,
+    pub(crate) access_key_secret: SecretRef,
     #[serde(rename = "secretKeySecret")]
-    secret_key_secret: SecretRef,
-    insecure: bool,
-    bucket: String,
-    endpoint: String,
-    region: String,
+    pub(crate) secret_key_secret: SecretRef,
+    pub(crate) bucket: String,
+    pub(crate) endpoint: String,
+    pub(crate) region: String,
+    pub(crate) insecure: bool,
+    #[serde(default, rename = "pathStyleEndpoint")]
+    pub(crate) path_style_endpoint: bool,
 }
 
 #[derive(Deserialize, PartialEq, Debug)]
-struct SecretRef {
-    name: String,
-    key: String,
+pub(crate) struct SecretRef {
+    pub(crate) name: String,
+    pub(crate) key: String,
 }
 
 #[cfg(test)]

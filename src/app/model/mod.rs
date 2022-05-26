@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use workflow_model::model::{Artifact, Parameter, Phase};
+use workflow_model::model::{ArtifactRef, Parameter, Phase};
 
 pub mod argo;
 
@@ -24,7 +24,7 @@ pub struct Template {
 #[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct Inputs {
-    pub artifacts: Option<Vec<Artifact>>,
+    pub artifacts: Option<Vec<ArtifactRef>>,
     pub parameters: Option<Vec<Parameter>>,
 }
 
@@ -32,7 +32,7 @@ pub struct Inputs {
 #[allow(dead_code)]
 pub struct Outputs {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub artifacts: Option<Vec<Artifact>>,
+    pub artifacts: Option<Vec<ArtifactRef>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub parameters: Option<Vec<Parameter>>,
 }
@@ -112,7 +112,7 @@ impl ExecuteTemplateResult {
         {
             true => {
                 let parameters = Some(src.outputs.parameters);
-                let artifacts = None;
+                let artifacts = Some(src.outputs.artifacts);
                 Some(Outputs {
                     artifacts,
                     parameters,

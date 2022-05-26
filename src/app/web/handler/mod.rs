@@ -8,7 +8,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use axum_macros::debug_handler;
 use tracing::{debug, error};
-use workflow_model::model::{Parameter, Phase, PluginInvocation};
+use workflow_model::model::{ArtifactRef, Parameter, Phase, PluginInvocation};
 
 #[debug_handler]
 pub async fn execute_template(
@@ -34,9 +34,15 @@ pub async fn execute_template(
         in_params = params;
     }
 
+    let mut in_artifacts: Vec<ArtifactRef> = Vec::new();
+    if let Some(artifacts) = request.template.inputs.artifacts {
+        in_artifacts = artifacts;
+    }
+
     let invocation = PluginInvocation {
         workflow_name: request.workflow.metadata.name,
         parameters: in_params,
+        artifacts: in_artifacts,
         plugin_options,
     };
 
@@ -48,7 +54,10 @@ pub async fn execute_template(
     // TODO as this changed from spawn_blocking to spawn, this might be a problem again!
     let result = tokio::task::spawn(async move {
         let runner = deps.get_runner();
-        runner.run(&image, invocation, &permissions).await
+        let artifact_repo_config = deps.get_artifact_repository_config();
+        runner
+            .run(&image, invocation, &permissions, artifact_repo_config)
+            .await
     })
     .await
     .expect("able to join runner task");

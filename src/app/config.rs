@@ -37,7 +37,7 @@ pub struct Config {
     #[clap(long = "plugin-namespace", env = "PLUGIN_NAMESPACE")]
     pub plugin_namespace: Option<String>,
 
-    #[clap(long = "argo-controller-configmap")]
+    #[clap(long = "argo-controller-configmap", env = "ARGO_CONTROLLER_CONFIGMAP")]
     pub argo_controller_configmap: Option<String>,
 
     #[clap(long = "k8s-api-url", env = "K8S_API_URL")]

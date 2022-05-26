@@ -1,16 +1,21 @@
 use crate::app::model::ModulePermissions;
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
+use async_trait::async_trait;
 use std::io::Cursor;
 use tracing::debug;
 use wasi_common::pipe::WritePipe;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Engine, Linker, Module, Store, TypedFunc};
 use wasmtime_wasi::{WasiCtx, WasiCtxBuilder};
+use workflow_model::host::artifacts::ArtifactManager;
 use workflow_model::host::WorkingDir;
-use workflow_model::model::{Outputs, Phase, PluginInvocation, PluginResult};
+use workflow_model::model::{
+    ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult, S3ArtifactRepositoryConfig,
+};
 
+#[async_trait]
 pub trait WorkflowPlugin {
-    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult>;
+    async fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult>;
 }
 
 struct ModuleCtx {
@@ -101,47 +106,88 @@ fn retrieve_sys_output(
 
 pub struct WASIModule {
     working_dir: WorkingDir,
+    artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     store: Option<Store<ModuleCtx>>,
     workflow: TypedFunc<(), ()>,
 }
 
 impl WASIModule {
-    pub fn try_new(
+    pub async fn try_new(
         engine: &Engine,
         module: &Module,
         perms: &Option<ModulePermissions>,
+        artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<Self> {
-        let working_dir = WorkingDir::try_new()?;
+        let working_dir = WorkingDir::try_new().await?;
         let (mut linker, mut store) = setup_module(engine, perms, &working_dir)?;
-        linker.module(&mut store, "", module)?;
+        linker.module_async(&mut store, "", module).await?;
         let workflow = linker
             .get_default(&mut store, "")?
             .typed::<(), (), _>(&store)?;
 
-        Ok(Self::new(working_dir, store, workflow))
+        Ok(Self::new(
+            working_dir,
+            artifact_repo_config,
+            store,
+            workflow,
+        ))
     }
 
-    fn new(working_dir: WorkingDir, store: Store<ModuleCtx>, workflow: TypedFunc<(), ()>) -> Self {
+    fn new(
+        working_dir: WorkingDir,
+        artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
+        store: Store<ModuleCtx>,
+        workflow: TypedFunc<(), ()>,
+    ) -> Self {
         WASIModule {
             working_dir,
+            artifact_repo_config,
             workflow,
             store: Some(store),
         }
     }
 }
 
+#[async_trait]
 impl WorkflowPlugin for WASIModule {
-    fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
+    async fn run(&mut self, invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
+        debug!(?invocation, "Running WASIModule");
         self.working_dir.set_input(&invocation)?;
+        let mut manager: Option<ArtifactManager> = None;
+        if let Some(config) = &self.artifact_repo_config {
+            manager = Some(ArtifactManager::try_new(config.to_owned())?);
+        } else {
+            debug!("S3ArtifactRepositoryConfig absent, ignoring artifacts")
+        }
+        if let Some(manager) = &manager {
+            for artifact in invocation.artifacts {
+                manager
+                    .download(&self.working_dir, &artifact)
+                    .await
+                    .context(format!("Downloading artifact {:?}", artifact))?;
+            }
+        }
         let mut store = self.store.as_mut().expect("present store");
         let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
 
-        match self.workflow.call(&mut store, ()) {
+        match self.workflow.call_async(&mut store, ()).await {
             Ok(_) => {
                 self.store = None;
                 let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;
                 debug!(?stdout, ?stderr, "Module Output");
-                self.working_dir.result()
+                let mut result = self.working_dir.result()?;
+                if let Some(manager) = &manager {
+                    let mut artifacts: Vec<ArtifactRef> = Vec::new();
+                    for artifact in result.outputs.artifacts {
+                        let this_ref = manager
+                            .upload(&self.working_dir, &invocation.workflow_name, &artifact)
+                            .await?;
+                        artifacts.push(this_ref);
+                    }
+                    result.outputs.artifacts = artifacts;
+                }
+
+                Ok(result)
             }
             Err(e) => {
                 self.store = None;

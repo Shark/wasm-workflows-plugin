@@ -17,14 +17,16 @@ pub fn setup(log_level: &LogLevel, enable_telemetry: bool) -> anyhow::Result<()>
                 "wasm_workflows_plugin=debug"
                     .parse()
                     .expect("parse directive"),
-            ),
+            )
+            .add_directive("workflow_model=debug".parse().expect("parse directive")),
         LogLevel::Trace => filter
             .add_directive("tower_http=debug".parse().expect("parse directive"))
             .add_directive(
                 "wasm_workflows_plugin=trace"
                     .parse()
                     .expect("parse directive"),
-            ),
+            )
+            .add_directive("workflow_model=trace".parse().expect("parse directive")),
         _ => filter,
     };
 

@@ -1,7 +1,7 @@
 use crate::app::model::ModulePermissions;
 use anyhow::Error;
 use async_trait::async_trait;
-use workflow_model::model::{PluginInvocation, PluginResult};
+use workflow_model::model::{PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
 pub mod distributed;
 pub mod local;
@@ -13,6 +13,7 @@ pub trait Runner {
         oci_image: &str,
         invocation: PluginInvocation,
         perms: &Option<ModulePermissions>,
+        artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<PluginResult, WasmError>;
 }
 

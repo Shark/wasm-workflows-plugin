@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/examples/text2qr/**'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest

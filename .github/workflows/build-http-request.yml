@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/contrib/http-request/**'
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
