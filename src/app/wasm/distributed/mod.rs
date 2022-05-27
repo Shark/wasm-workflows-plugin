@@ -6,9 +6,12 @@ use k8s_openapi::api::core::v1::{ConfigMap, Container, Pod, PodSpec, Toleration}
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
 use kube::{Api, ResourceExt};
-use std::collections::BTreeMap;
+use kube_core::params::DeleteParams;
+use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
 use tokio::time::sleep;
+use tracing::{debug, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use workflow_model::model::{Phase, PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
 pub struct DistributedRunner {
@@ -24,7 +27,12 @@ impl DistributedRunner {
 
 #[async_trait]
 impl Runner for DistributedRunner {
-    #[tracing::instrument(name = "wasm.run", skip(self, artifact_repo_config))]
+    #[tracing::instrument(
+        name = "wasm.run_distributed",
+        ret,
+        err(Debug),
+        skip(self, artifact_repo_config)
+    )]
     async fn run(
         &self,
         oci_image: &str,
@@ -32,24 +40,71 @@ impl Runner for DistributedRunner {
         _perms: &Option<ModulePermissions>,
         artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<PluginResult, WasmError> {
-        let (config_maps, namespace): (Api<ConfigMap>, &str) = {
-            let client = self.client.clone();
-            match &self.namespace {
-                Some(ns) => (Api::namespaced(client, ns), ns),
-                None => (Api::default_namespaced(client), "default"),
+        let config_map_name = self
+            .create_config_map(
+                &invocation,
+                &artifact_repo_config,
+                &tracing::Span::current(),
+            )
+            .await?;
+        let pod_name = self.create_pod(&config_map_name, oci_image).await?;
+        let result = match self.wait_for_result(&config_map_name, &pod_name).await {
+            Ok(result) => {
+                self.delete_pod(&pod_name).await?;
+                result
+            }
+            Err(why) => {
+                self.delete_pod(&pod_name).await?;
+                return Err(why);
             }
         };
-        let input_json = serde_json::to_string(&invocation)
+        if result.is_none() {
+            return Ok(PluginResult {
+                phase: Phase::Failed,
+                message: "Timeout: Result not received in time".into(),
+                outputs: Default::default(),
+            });
+        }
+        Ok(result.unwrap())
+    }
+}
+
+impl DistributedRunner {
+    #[tracing::instrument(
+        name = "wasm.create_config_map",
+        level = "debug",
+        skip(self, artifact_repo_config)
+    )]
+    async fn create_config_map(
+        &self,
+        invocation: &PluginInvocation,
+        artifact_repo_config: &Option<S3ArtifactRepositoryConfig>,
+        parent_span: &Span,
+    ) -> anyhow::Result<String, WasmError> {
+        let config_maps: Api<ConfigMap> = self.api();
+        let namespace = self.namespace();
+        let input_json = serde_json::to_string(invocation)
             .map_err(|e| WasmError::EnvironmentSetup(anyhow!(e)))?;
         let mut data: BTreeMap<String, String> = BTreeMap::new();
         data.insert("input.json".into(), input_json);
-        if let Some(artifact_repo_config) = &artifact_repo_config {
+        if let Some(artifact_repo_config) = artifact_repo_config {
             let artifact_repo_config_json = serde_json::to_string(&artifact_repo_config)
                 .map_err(|e| WasmError::EnvironmentSetup(anyhow!(e)))?;
             data.insert(
                 "artifact-repo-config.json".into(),
                 artifact_repo_config_json,
             );
+        }
+        {
+            let mut carrier: HashMap<String, String> = HashMap::new();
+            let cx = parent_span.context();
+            opentelemetry::global::get_text_map_propagator(|propagator| {
+                propagator.inject_context(&cx, &mut carrier)
+            });
+            let carrier_json = serde_json::to_string(&carrier).map_err(|e| {
+                WasmError::EnvironmentSetup(anyhow!(e).context("Encoding OpenTelemetry carrier"))
+            })?;
+            data.insert("opentelemetry.json".into(), carrier_json);
         }
         let config_map = ConfigMap {
             metadata: ObjectMeta {
@@ -61,34 +116,34 @@ impl Runner for DistributedRunner {
             ..Default::default()
         };
         let pp = PostParams::default();
-        let config_map_name = match config_maps.create(&pp, &config_map).await {
+        match config_maps.create(&pp, &config_map).await {
             Ok(config_map) => {
                 let name = config_map.name();
                 tracing::debug!(?name, "Created ConfigMap");
-                name
+                Ok(name)
             }
-            Err(why) => {
-                return Err(WasmError::Invocation(
-                    anyhow!(why).context("Creating ConfigMap"),
-                ))
-            }
-        };
-        let pods: Api<Pod> = {
-            let client = self.client.clone();
-            match &self.namespace {
-                Some(ns) => Api::namespaced(client, ns),
-                None => Api::default_namespaced(client),
-            }
-        };
+            Err(why) => Err(WasmError::Invocation(
+                anyhow!(why).context("Creating ConfigMap"),
+            )),
+        }
+    }
+
+    #[tracing::instrument(name = "wasm.create_pod", level = "debug", skip(self))]
+    async fn create_pod(
+        &self,
+        config_map_name: &str,
+        oci_image: &str,
+    ) -> anyhow::Result<String, WasmError> {
+        let pods: Api<Pod> = self.api();
         let pod = Pod {
             metadata: ObjectMeta {
-                namespace: Some(namespace.to_owned()),
-                name: Some(config_map_name.clone()),
+                namespace: Some(self.namespace().to_owned()),
+                name: Some(config_map_name.to_owned()),
                 ..Default::default()
             },
             spec: Some(PodSpec {
                 containers: vec![Container {
-                    name: config_map_name.clone(),
+                    name: config_map_name.to_owned(),
                     image: Some(oci_image.to_owned()),
                     ..Default::default()
                 }],
@@ -122,19 +177,66 @@ impl Runner for DistributedRunner {
             }),
             ..Default::default()
         };
+        let pp = PostParams::default();
         match pods.create(&pp, &pod).await {
             Ok(pod) => {
-                let name = pod.name();
-                tracing::debug!(?name, "Created Pod");
+                tracing::debug!(name = ?pod.name(), "Created Pod");
+                Ok(pod.name())
             }
-            Err(why) => return Err(WasmError::Invocation(anyhow!(why).context("Creating Pod"))),
-        };
+            Err(why) => Err(WasmError::Invocation(anyhow!(why).context("Creating Pod"))),
+        }
+    }
 
+    #[tracing::instrument(name = "wasm.wait_for_result", level = "debug", skip(self))]
+    async fn wait_for_result(
+        &self,
+        config_map_name: &str,
+        pod_name: &str,
+    ) -> anyhow::Result<Option<PluginResult>, WasmError> {
+        let config_maps: Api<ConfigMap> = self.api();
+        let pods: Api<Pod> = self.api();
         let mut tries = 0;
         let mut result: Option<String> = None;
-        while tries < 100 {
+        let interval = 500; // ms
+        while tries < 1000 {
+            let pod = pods
+                .get(pod_name)
+                .await
+                .map_err(|e| WasmError::Invocation(anyhow!(e).context("Polling Pod")))?;
+            if let Some(status) = pod.status {
+                if let Some(phase) = status.phase {
+                    debug!("Pod phase is {}", phase);
+                    match phase.as_str() {
+                        "Pending" => {
+                            if (tries / interval) > 10 {
+                                // Fail when pending for more than 10s
+                                return Err(WasmError::Invocation(anyhow!(
+                                    "Pod pending for more than 10s, probably no Krustlet available"
+                                )));
+                            }
+                            tries += 1;
+                            sleep(Duration::from_millis(interval)).await;
+                            continue;
+                        }
+                        "Running" => {
+                            tries += 1;
+                            sleep(Duration::from_millis(interval)).await;
+                            continue;
+                        }
+                        "Succeeded" => {
+                            debug!("Pod has succeeded");
+                        }
+                        "Failed" => return Err(WasmError::Invocation(anyhow!("Pod has failed"))),
+                        _ => {
+                            tries += 1;
+                            sleep(Duration::from_millis(interval)).await;
+                            continue;
+                        }
+                    }
+                }
+            }
             let config_map = config_maps
-                .get(&config_map_name)
+                .get(config_map_name)
                 .await
                 .map_err(|e| WasmError::Invocation(anyhow!(e).context("Polling ConfigMap")))?;
             match config_map.data.unwrap_or_default().get("result.json") {
@@ -147,19 +249,42 @@ impl Runner for DistributedRunner {
                 break;
             }
             tries += 1;
-            sleep(Duration::from_millis(100)).await;
         }
-        if result.is_none() {
-            return Ok(PluginResult {
-                phase: Phase::Failed,
-                message: "Timeout: Result not received in time".into(),
-                outputs: Default::default(),
-            });
+        match &result {
+            Some(str) => Ok(Some(
+                serde_json::from_str(str).map_err(|e| WasmError::Invocation(anyhow!(e)))?,
+            )),
+            None => Ok(None),
         }
-        let result: PluginResult = serde_json::from_str(&result.unwrap())
-            .map_err(|e| WasmError::Invocation(anyhow!(e)))?;
-        Ok(result)
+    }
+
+    #[tracing::instrument(name = "wasm.delete_pod", level = "debug", skip(self))]
+    async fn delete_pod(&self, pod_name: &str) -> anyhow::Result<(), WasmError> {
+        let pods: Api<Pod> = self.api();
+        match pods.delete(pod_name, &DeleteParams::default()).await {
+            Ok(_) => Ok(()),
+            Err(why) => Err(WasmError::Invocation(anyhow!(why).context("Deleting pod"))),
+        }
+    }
+
+    fn api<T>(&self) -> Api<T>
+    where
+        <T as kube_core::Resource>::DynamicType: Default,
+        T: k8s_openapi::Metadata<Ty = ObjectMeta>,
+    {
+        match &self.namespace {
+            Some(ns) => Api::namespaced(self.client.to_owned(), ns),
+            None => Api::default_namespaced(self.client.to_owned()),
+        }
+    }
+
+    fn namespace(&self) -> &str {
+        match &self.namespace {
+            Some(ns) => ns,
+            None => DEFAULT_NAMESPACE,
+        }
     }
 }
 
+const DEFAULT_NAMESPACE: &str = "default";
 const NAME_PREFIX: &str = "wasm-workflow-";

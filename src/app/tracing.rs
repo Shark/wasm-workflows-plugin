@@ -1,7 +1,6 @@
 use crate::app::config::LogLevel;
 use anyhow::anyhow;
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::filter::dynamic_filter_fn;
 use tracing_subscriber::{
     filter::{EnvFilter, LevelFilter},
     prelude::*,
@@ -31,19 +30,18 @@ pub fn setup(log_level: &LogLevel, enable_telemetry: bool) -> anyhow::Result<()>
     };
 
     let telemetry: Option<OpenTelemetryLayer<_, _>> = match enable_telemetry {
-        true => Some(telemetry()?),
+        true => {
+            let telemetry = telemetry()?;
+            opentelemetry::global::set_text_map_propagator(opentelemetry_jaeger::Propagator::new());
+            Some(telemetry)
+        }
         false => None,
     };
 
     tracing_subscriber::registry()
         .with(telemetry)
-        .with(
-            tracing_subscriber::fmt::layer()
-                .compact()
-                .with_filter(dynamic_filter_fn(move |metadata, ctx| {
-                    filter.enabled(metadata, ctx.clone())
-                })),
-        )
+        .with(tracing_subscriber::fmt::layer().compact())
+        .with(filter)
         .init();
 
     Ok(())

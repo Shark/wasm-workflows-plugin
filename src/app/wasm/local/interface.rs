@@ -2,7 +2,7 @@ use crate::app::model::ModulePermissions;
 use anyhow::{anyhow, Context};
 use async_trait::async_trait;
 use std::io::Cursor;
-use tracing::debug;
+use tracing::{debug, info_span, Instrument};
 use wasi_common::pipe::WritePipe;
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
 use wasmtime::{Engine, Linker, Module, Store, TypedFunc};
@@ -170,7 +170,9 @@ impl WorkflowPlugin for WASIModule {
         let mut store = self.store.as_mut().expect("present store");
         let (stdout, stderr) = prepare_sys_output(&mut store.data_mut().wasi);
 
-        match self.workflow.call_async(&mut store, ()).await {
+        let span = info_span!("wasm.execute_mod");
+        let result = self.workflow.call_async(&mut store, ()).instrument(span);
+        match result.await {
             Ok(_) => {
                 self.store = None;
                 let (stdout, stderr) = retrieve_sys_output(stdout, stderr)?;

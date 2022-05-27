@@ -4,7 +4,7 @@ use crate::app::wasm::local::interface::{WASIModule, WorkflowPlugin};
 use crate::app::wasm::{Runner, WasmError};
 use anyhow::anyhow;
 use async_trait::async_trait;
-use tracing::info_span;
+use tracing::debug_span;
 use wasmtime::{Engine, Module};
 use workflow_model::model::{PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
@@ -31,7 +31,12 @@ impl LocalRunner {
 
 #[async_trait]
 impl Runner for LocalRunner {
-    #[tracing::instrument(name = "wasm.run", skip(self, artifact_repo_config))]
+    #[tracing::instrument(
+        name = "wasm.run_local",
+        ret,
+        err(Debug),
+        skip(self, artifact_repo_config)
+    )]
     async fn run(
         &self,
         oci_image: &str,
@@ -55,22 +60,21 @@ impl Runner for LocalRunner {
                     .map_err(|err| {
                         WasmError::Retrieve(anyhow!(err).context("Wasm module retrieve failed"))
                     })?;
-            let precompiled_mod =
-                tracing::trace_span!("engine.precompile_module").in_scope(|| {
-                    engine.precompile_module(&pulled_mod).map_err(|err| {
-                        WasmError::Precompile(
-                            anyhow!(err).context("Wasm module precompilation failed"),
-                        )
-                    })
-                })?;
+            let precompiled_mod = debug_span!("engine.precompile_module").in_scope(|| {
+                engine.precompile_module(&pulled_mod).map_err(|err| {
+                    WasmError::Precompile(anyhow!(err).context("Wasm module precompilation failed"))
+                })
+            })?;
             let _ = self.cache.put(oci_image, &precompiled_mod).map_err(|err| {
                 WasmError::Retrieve(anyhow!(err).context("Storing Wasm module in cache failed"))
             })?;
             module = Some(precompiled_mod);
         }
 
-        let module = unsafe { Module::deserialize(&engine, module.unwrap()) }.map_err(|err| {
-            WasmError::EnvironmentSetup(anyhow!(err).context("Deserializing module failed"))
+        let module = debug_span!("engine.deserialize_mod").in_scope(|| {
+            unsafe { Module::deserialize(&engine, module.unwrap()) }.map_err(|err| {
+                WasmError::EnvironmentSetup(anyhow!(err).context("Deserializing module failed"))
+            })
         })?;
 
         // First try to instantiate the module as WIT and fall back to WASI in case of an error
@@ -83,17 +87,14 @@ impl Runner for LocalRunner {
                 Ok(wasi) => Box::new(wasi),
                 Err(e) => return Err(e),
             };
-        let result = info_span!("wasm.execute_mod")
-            .in_scope(|| plugin.run(invocation))
-            .await
-            .map_err(|err| {
-                WasmError::Invocation(anyhow!(err).context("Wasm module invocation failed"))
-            })?;
+        let result = plugin.run(invocation).await.map_err(|err| {
+            WasmError::Invocation(anyhow!(err).context("Wasm module invocation failed"))
+        })?;
         Ok(result)
     }
 }
 
-#[tracing::instrument(name = "wasm.oci_pull", skip(insecure_oci_registries))]
+#[tracing::instrument(name = "wasm.oci_pull", level = "debug", skip(insecure_oci_registries))]
 async fn pull<'a>(
     oci_image_name: &str,
     insecure_oci_registries: &'a [&'a str],
@@ -104,7 +105,7 @@ async fn pull<'a>(
         .map_err(|err| anyhow!(err).context("Could not fetch Wasm OCI image"))
 }
 
-pub fn setup_engine() -> anyhow::Result<wasmtime::Engine> {
+pub fn setup_engine() -> anyhow::Result<Engine> {
     let mut config = wasmtime::Config::new();
     config.async_support(true);
     Engine::new(&config)

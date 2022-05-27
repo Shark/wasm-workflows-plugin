@@ -7,10 +7,11 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use axum_macros::debug_handler;
-use tracing::{debug, error};
+use tracing::{debug, error, Instrument};
 use workflow_model::model::{ArtifactRef, Parameter, Phase, PluginInvocation};
 
 #[debug_handler]
+#[tracing::instrument(name = "request.execute_template", fields(workflow_name=&request.workflow.metadata.name.as_str()), skip(deps))]
 pub async fn execute_template(
     Json(request): Json<ExecuteTemplateRequest>,
     Extension(deps): Extension<DynDependencyProvider>,
@@ -52,13 +53,17 @@ pub async fn execute_template(
     // something to do with reqwest and connection pooling, but the thread resolved the problem
     // as well and was an easier solution.
     // TODO as this changed from spawn_blocking to spawn, this might be a problem again!
-    let result = tokio::task::spawn(async move {
-        let runner = deps.get_runner();
-        let artifact_repo_config = deps.get_artifact_repository_config();
-        runner
-            .run(&image, invocation, &permissions, artifact_repo_config)
-            .await
-    })
+    let span = tracing::info_span!("wasm");
+    let result = tokio::task::spawn(
+        async move {
+            let runner = deps.get_runner();
+            let artifact_repo_config = deps.get_artifact_repository_config();
+            runner
+                .run(&image, invocation, &permissions, artifact_repo_config)
+                .await
+        }
+        .instrument(span),
+    )
     .await
     .expect("able to join runner task");
 

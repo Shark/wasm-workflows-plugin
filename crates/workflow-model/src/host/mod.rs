@@ -1,6 +1,7 @@
 use super::model::{INPUT_FILE_NAME, RESULT_FILE_NAME};
 use crate::model::{PluginInvocation, PluginResult, INPUT_ARTIFACTS_PATH, OUTPUT_ARTIFACTS_PATH};
 use anyhow::Context;
+use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::path::Path;
 use tempfile::TempDir;
@@ -49,5 +50,12 @@ impl WorkingDir {
         };
         let plugin_result: PluginResult = serde_json::from_reader(result_file)?;
         Ok(plugin_result)
+    }
+}
+
+impl Debug for WorkingDir {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let dir = self.temp_dir.path().to_str().unwrap_or("?");
+        f.debug_struct("WorkingDir").field("dir", &dir).finish()
     }
 }

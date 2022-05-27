@@ -38,6 +38,7 @@ impl ArtifactManager {
         Ok(Self { bucket })
     }
 
+    #[tracing::instrument(name = "artifact.download", level = "debug", skip(self))]
     pub async fn download(&self, wd: &WorkingDir, artifact: &ArtifactRef) -> anyhow::Result<()> {
         let s3_key: &str = match &artifact.s3 {
             Some(s3) => s3.key.as_ref(),
@@ -69,6 +70,7 @@ impl ArtifactManager {
         }
     }
 
+    #[tracing::instrument(name = "artifact.upload", level = "debug", skip(self))]
     pub async fn upload(
         &self,
         wd: &WorkingDir,

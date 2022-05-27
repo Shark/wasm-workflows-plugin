@@ -49,6 +49,7 @@ cap-std = "0.24.3"
 k8s-openapi = { version = "0.14.0", features = ["v1_22"] }
 kube = { version = "0.72.0", features = ["runtime"] }
 kube-client = "0.72.0"
+kube-core = "0.72.0"
 
 workflow-model = { path = "./crates/workflow-model", features = ["host"] }
 
