@@ -1,0 +1,13 @@
+[package]
+name = "image-processor"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = "1.0.136"
+serde_json = "1.0.79"
+anyhow = "1.0.54"
+photon-rs = { path = "../../../../photon/crate", default-features = false }
+workflow-model = { path = "../../../crates/workflow-model", features = ["plugin"] }
