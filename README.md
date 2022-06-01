@@ -245,9 +245,26 @@ The `http-request` module can be used in a workflow like so:
           - https://httpbin.org
 ```
 
-### :construction: Distributed Mode
+### Distributed Mode
 
-Right now, all Wasm modules run in the plugin context -- in a single container This is fine for many use cases because Argo creates a new plugin context for every workflow instance. But the scaling is limited to a single node. For a full showcase of the vision of Cloud-Native WebAssembly, the workload should of course be distributed.
+This plugin has two modes:
+
+* A `local` Mode.
+  
+  This is the default and it will run Wasm modules in the plugin process. This is a single container per workflow instance. This is fine for most use cases that don't need infinite scaling within a workflow. It's also very easy to use because there is nothing to configure: it just works.
+
+* A `distributed` Mode.
+
+  This mode is more advanced because it will orchestrate Wasm module invocations in a Kubernetes cluster. Much like Argo itself creates a Pod for each workflow task, the distributed mode will create Pods for Wasm modules.
+
+  What makes this possible is [Krustlet](https://docs.krustlet.dev). Krustlet shows up as a new node in your Kubernetes cluster and it will execute Wasm modules that Kubernetes schedules to this node. I [forked Krustlet](https://github.com/Shark/krustlet) since there are some changes necessary to make Krustlet aware of the particularities of running workflow tasks as Wasm modules (inputs, outputs, parameters, artifacts, etc.).
+
+  For the distributed mode, you need to do a bit more:
+
+  * Create a service account and proper credentials for this plugin. See [`argo-plugin/rbac.yaml`](argo-plugin/rbac.yaml) for details.
+  * Inject the service account credentials into the plugin container. For this, there is a special [`plugin-distributed.yaml`](argo-plugin/plugin-distributed.yaml) showing you how.
+
+  By default, the plugin will be registered to the `wasm_distributed` key. This allows you to run the plugin in both modes simultaneously.
 
 ### :construction: Module Source
 
@@ -268,9 +285,9 @@ Currently, this project only supports OCI registries and the format created by t
 
 ## Roadmap
 
-- [ ] **Distributed Mode**
-- [ ] Create ready-to-use modules for demo (cowsay), and then image/text processing
-- [ ] Support input + output artifacts
+- [x] **Distributed Mode**
+- [x] Create ready-to-use modules for demo (cowsay), and then image/text processing
+- [x] Support input + output artifacts
 - [ ] Enable additional capability providers (~~HTTP~~, S3, SQL, etc.)
 - [ ] Support authentication for OCI (pull secrets)
 - [ ] Support [WAPM](https://wapm.io) as a module source
