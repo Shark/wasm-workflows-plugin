@@ -28,11 +28,25 @@ impl PluginManager {
     }
 }
 
-pub struct ArtifactManager {}
+pub struct ArtifactManager {
+    base_path: PathBuf,
+}
+
+impl ArtifactManager {
+    pub fn new() -> ArtifactManager {
+        ArtifactManager {
+            base_path: PathBuf::from(WORKING_DIR_PLUGIN_PATH),
+        }
+    }
+
+    pub fn new_with_base_path(base_path: PathBuf) -> ArtifactManager {
+        ArtifactManager { base_path }
+    }
+}
 
 impl ArtifactManager {
     pub fn input_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
-        PathBuf::from(WORKING_DIR_PLUGIN_PATH)
+        self.base_path
             .join(INPUT_ARTIFACTS_PATH)
             .join(&artifact.name)
     }
@@ -48,7 +62,7 @@ impl ArtifactManager {
     }
 
     pub fn output_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
-        PathBuf::from(WORKING_DIR_PLUGIN_PATH)
+        self.base_path
             .join(OUTPUT_ARTIFACTS_PATH)
             .join(&artifact.name)
     }
@@ -81,7 +95,7 @@ fn wrapper(
 ) -> anyhow::Result<()> {
     let plugin_manager = PluginManager::new();
     let invocation = plugin_manager.invocation()?;
-    let artifact_manager = ArtifactManager {};
+    let artifact_manager = ArtifactManager::new();
     match plugin(invocation, artifact_manager) {
         Ok(result) => {
             plugin_manager.set_result(&result)?;
