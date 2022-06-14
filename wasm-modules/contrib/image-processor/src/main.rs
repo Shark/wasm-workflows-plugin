@@ -4,13 +4,32 @@ use anyhow::{anyhow, Context};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tracing::info_span;
 use workflow_model::model::{
     ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult, WORKING_DIR_PLUGIN_PATH,
 };
 use workflow_model::plugin::ArtifactManager;
 
+#[cfg(target_os = "wasi")]
 fn main() {
     workflow_model::plugin::main(Box::new(run));
+}
+
+#[cfg(not(target_os = "wasi"))]
+mod cli;
+
+#[cfg(not(target_os = "wasi"))]
+fn main() {
+    let invocation = cli::initialize();
+    let artifact_manager = ArtifactManager::new_with_base_path(std::env::current_dir().unwrap());
+    let result = info_span!("processor.run").in_scope(|| run(invocation, artifact_manager));
+    match result {
+        Ok(_) => {}
+        Err(why) => {
+            panic!("Error occurred: {:?}", why);
+        }
+    }
+    opentelemetry::global::shutdown_tracer_provider();
 }
 
 fn run(
@@ -62,17 +81,22 @@ fn run(
         photon::multiple::watermark(&mut img, &watermark, x, y);
     }
 
-    let output_pathbuf = PathBuf::from(WORKING_DIR_PLUGIN_PATH).join("output.jpg");
-    let output_path = output_pathbuf.to_str().unwrap();
-    photon::native::save_image(img, &output_path).context("Saving output artifact")?;
-
     let output = ArtifactRef {
         name: "output".to_string(),
         path: "".to_string(),
         s3: None,
     };
+    let output_path = format!(
+        "{}.jpg",
+        artifact_manager
+            .output_artifact_path(&output)
+            .to_str()
+            .unwrap()
+    );
+    photon::native::save_image(img, &output_path).context("Saving output artifact")?;
+
     let artifact_path = artifact_manager.output_artifact_path(&output);
-    fs::rename(output_pathbuf, artifact_path).context("Moving output artifact")?;
+    fs::rename(output_path, artifact_path).context("Moving output artifact")?;
 
     Ok(PluginResult {
         phase: Phase::Succeeded,

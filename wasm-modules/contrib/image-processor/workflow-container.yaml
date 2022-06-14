@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: image-processor-container-
+spec:
+  entrypoint: process
+
+  arguments:
+    parameters:
+    - name: effect
+      value: desaturate
+    artifacts:
+      - name: input
+        s3:
+          key: IMG_5994.jpg
+  templates:
+  - name: process
+    inputs:
+      parameters:
+      - name: effect
+      artifacts:
+      - name: input
+        path: /work/artifacts-in/input
+    container:
+      image: 192.168.64.2:32000/container-image-processor
+      command: [image-processor]
+      env:
+      - name: OTEL_ENABLE
+        value: '1'
+      - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
+        value: jaeger-agent-svc.default.svc.cluster.local
+      - name: OTEL_EXPORTER_JAEGER_AGENT_PORT
+        value: '6831'
+    outputs:
+      artifacts:
+      - name: output
+        path: /work/artifacts-out/output
+#
+#
+#
+#arguments:
+#  artifacts:
+#    - name: kubectl
+#      http:
+#        url: https://storage.googleapis.com/kubernetes-release/release/v1.8.0/bin/linux/amd64/kubectl
+#
+#  templates:
+#    - name: kubectl-input-artifact
+#      inputs:
+#        artifacts:
+#          - name: kubectl
+#            path: /usr/local/bin/kubectl
+#            mode: 0755
+#      container:
+#        image: debian:9.4
+#        command: [sh, -c]
+#        args: ["kubectl version"]

@@ -9,5 +9,19 @@ edition = "2021"
 serde = "1.0.136"
 serde_json = "1.0.79"
 anyhow = "1.0.54"
-photon-rs = { path = "../../../../photon/crate", default-features = false }
-workflow-model = { path = "../../../crates/workflow-model", features = ["plugin"] }
+clap = { version = "3.1.0", features = ["derive", "env"] }
+tracing = { version = "0.1.35" }
+tracing-subscriber = { version = "0.3.11", features = ["registry"] }
+tracing-opentelemetry = "0.17.3"
+opentelemetry = "0.17.0"
+opentelemetry-jaeger = "0.16.0"
+
+[dependencies.photon-rs]
+git = "https://github.com/Shark/photon"
+rev = "ab1e8069b7cf537c550cf9801d9ea4f5bc938431"
+default-features = false
+
+[dependencies.workflow-model]
+git = "https://github.com/Shark/wasm-workflows-plugin"
+rev = "379a7bde237d73d3e25cf13a055ce12a491d09cb"
+features = ["plugin"]
