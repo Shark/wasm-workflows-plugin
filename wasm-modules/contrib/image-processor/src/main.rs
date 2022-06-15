@@ -4,6 +4,7 @@ use anyhow::{anyhow, Context};
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
+#[cfg(not(target_os = "wasi"))]
 use tracing::info_span;
 use workflow_model::model::{
     ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult, WORKING_DIR_PLUGIN_PATH,
