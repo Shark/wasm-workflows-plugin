@@ -56,3 +56,9 @@ spec:
         value: 192.168.64.2:32000
       - name: ARGO_CONTROLLER_CONFIGMAP
         value: workflow-controller-configmap
+#      - name: OTEL_ENABLE
+#        value: '1'
+#      - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
+#        value: jaeger-agent-svc.default.svc.cluster.local
+#      - name: OTEL_EXPORTER_JAEGER_AGENT_PORT
+#        value: '6831'
