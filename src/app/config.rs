@@ -55,6 +55,12 @@ pub struct Config {
 
     #[clap(long = "k8s-api-token", env = "K8S_API_TOKEN")]
     pub k8s_api_token: Option<String>,
+
+    #[clap(long = "distributed-wait-duration", default_value_t = 300)]
+    pub distributed_wait_duration: u16,
+
+    #[clap(long = "distributed-wait-interval", default_value_t = 250)]
+    pub distributed_wait_interval: u16,
 }
 
 impl Config {

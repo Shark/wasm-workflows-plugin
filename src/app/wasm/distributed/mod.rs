@@ -2,6 +2,7 @@ use crate::app::model::ModulePermissions;
 use crate::app::wasm::{Runner, WasmError};
 use anyhow::anyhow;
 use async_trait::async_trait;
+use chrono::Utc;
 use k8s_openapi::api::core::v1::{ConfigMap, Container, Pod, PodSpec, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
@@ -17,11 +18,20 @@ use workflow_model::model::{Phase, PluginInvocation, PluginResult, S3ArtifactRep
 pub struct DistributedRunner {
     client: kube::Client,
     namespace: Option<String>,
+    wait_config: ResultWaitConfig,
 }
 
 impl DistributedRunner {
-    pub fn new(client: kube::Client, namespace: Option<String>) -> Self {
-        DistributedRunner { client, namespace }
+    pub fn new(
+        client: kube::Client,
+        namespace: Option<String>,
+        wait_config: ResultWaitConfig,
+    ) -> Self {
+        DistributedRunner {
+            client,
+            namespace,
+            wait_config,
+        }
     }
 }
 
@@ -197,8 +207,12 @@ impl DistributedRunner {
         let pods: Api<Pod> = self.api();
         let mut tries = 0;
         let mut result: Option<String> = None;
-        let interval = 500; // ms
-        while tries < 1000 {
+        let started_at = Utc::now();
+        loop {
+            let elapsed_seconds = (Utc::now() - started_at).num_seconds();
+            if elapsed_seconds > self.wait_config.duration as i64 {
+                break;
+            }
             let pod = pods
                 .get(pod_name)
                 .await
@@ -208,19 +222,19 @@ impl DistributedRunner {
                     debug!("Pod phase is {}", phase);
                     match phase.as_str() {
                         "Pending" => {
-                            if (tries / interval) > 10 {
+                            if elapsed_seconds > 10 {
                                 // Fail when pending for more than 10s
                                 return Err(WasmError::Invocation(anyhow!(
                                     "Pod pending for more than 10s, probably no Krustlet available"
                                 )));
                             }
                             tries += 1;
-                            sleep(Duration::from_millis(interval)).await;
+                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
                             continue;
                         }
                         "Running" => {
                             tries += 1;
-                            sleep(Duration::from_millis(interval)).await;
+                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
                             continue;
                         }
                         "Succeeded" => {
@@ -229,7 +243,7 @@ impl DistributedRunner {
                         "Failed" => return Err(WasmError::Invocation(anyhow!("Pod has failed"))),
                         _ => {
                             tries += 1;
-                            sleep(Duration::from_millis(interval)).await;
+                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
                             continue;
                         }
                     }
@@ -284,6 +298,11 @@ impl DistributedRunner {
             None => DEFAULT_NAMESPACE,
         }
     }
+}
+
+pub struct ResultWaitConfig {
+    pub duration: u16,
+    pub interval: u16,
 }
 
 const DEFAULT_NAMESPACE: &str = "default";

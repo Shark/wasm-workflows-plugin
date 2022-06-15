@@ -36,6 +36,7 @@ serde_json = "1.0.79"
 serde_yaml = "0.8.24"
 tower-http = { version = "0.2.3", features = ["trace", "set-header"] }
 clap = { version = "3.1.0", features = ["derive", "env"] }
+chrono = "0.4.19"
 
 axum = "0.4.5"
 axum-macros = "0.1.2"

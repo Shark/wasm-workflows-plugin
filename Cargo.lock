@@ -358,6 +358,7 @@ dependencies = [
  "num-integer",
  "num-traits",
  "serde",
+ "time 0.1.43",
  "winapi",
 ]
 
@@ -2187,7 +2188,7 @@ dependencies = [
  "serde_derive",
  "sha2 0.10.2",
  "thiserror",
- "time",
+ "time 0.3.9",
  "tokio",
  "tokio-stream",
  "url 2.2.2",
@@ -2562,6 +2563,16 @@ dependencies = [
  "log",
  "ordered-float 1.1.1",
  "threadpool",
+]
+
+[[package]]
+name = "time"
+version = "0.1.43"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
+dependencies = [
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -3124,6 +3135,7 @@ dependencies = [
  "axum-macros",
  "base64",
  "cap-std",
+ "chrono",
  "clap",
  "indoc",
  "itertools",

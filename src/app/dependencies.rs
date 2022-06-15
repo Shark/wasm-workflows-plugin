@@ -1,6 +1,6 @@
 use crate::app::config::{Config, Mode};
 use crate::app::k8s;
-use crate::app::wasm::distributed::DistributedRunner;
+use crate::app::wasm::distributed::{DistributedRunner, ResultWaitConfig};
 use crate::app::wasm::local::{cache, LocalRunner};
 use crate::app::wasm::Runner;
 use anyhow::{anyhow, Context};
@@ -77,7 +77,11 @@ impl DependencyProvider for RuntimeDependencyProvider {
             Mode::Distributed => {
                 let client = self.client.as_ref().unwrap().clone();
                 let namespace = self.config.plugin_namespace.to_owned();
-                let runner = DistributedRunner::new(client, namespace);
+                let wait_config = ResultWaitConfig {
+                    duration: self.config.distributed_wait_duration,
+                    interval: self.config.distributed_wait_interval,
+                };
+                let runner = DistributedRunner::new(client, namespace, wait_config);
                 Box::new(runner)
             }
         }
