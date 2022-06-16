@@ -35,23 +35,3 @@ spec:
       artifacts:
       - name: output
         path: /work/artifacts-out/output
-#
-#
-#
-#arguments:
-#  artifacts:
-#    - name: kubectl
-#      http:
-#        url: https://storage.googleapis.com/kubernetes-release/release/v1.8.0/bin/linux/amd64/kubectl
-#
-#  templates:
-#    - name: kubectl-input-artifact
-#      inputs:
-#        artifacts:
-#          - name: kubectl
-#            path: /usr/local/bin/kubectl
-#            mode: 0755
-#      container:
-#        image: debian:9.4
-#        command: [sh, -c]
-#        args: ["kubectl version"]

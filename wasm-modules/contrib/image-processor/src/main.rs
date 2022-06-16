@@ -2,12 +2,11 @@ extern crate photon_rs as photon;
 
 use anyhow::{anyhow, Context};
 use std::fs;
-use std::path::PathBuf;
 use std::str::FromStr;
 #[cfg(not(target_os = "wasi"))]
 use tracing::info_span;
 use workflow_model::model::{
-    ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult, WORKING_DIR_PLUGIN_PATH,
+    ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult,
 };
 use workflow_model::plugin::ArtifactManager;
 
@@ -40,16 +39,16 @@ fn run(
     let input_artifact = invocation
         .artifacts
         .iter()
-        .find(|artifact| artifact.name == "input");
+        .find(|artifact| artifact.name == "input.jpg");
     if input_artifact.is_none() {
-        return Err(anyhow!("Artifact 'input' not present but required"));
+        return Err(anyhow!("Artifact 'input.jpg' not present but required"));
     }
     let input_artifact = input_artifact.unwrap();
 
     let watermark_artifact = invocation
         .artifacts
         .iter()
-        .find(|artifact| artifact.name == "watermark");
+        .find(|artifact| artifact.name == "watermark.jpg");
 
     let img_bytes = fs::read(artifact_manager.input_artifact_path(input_artifact))
         .context("Reading input artifact")?;
@@ -84,20 +83,15 @@ fn run(
 
     let output = ArtifactRef {
         name: "output".to_string(),
-        path: "".to_string(),
+        path: "/output.jpg".to_string(),
         s3: None,
     };
-    let output_path = format!(
-        "{}.jpg",
-        artifact_manager
-            .output_artifact_path(&output)
-            .to_str()
-            .unwrap()
-    );
-    photon::native::save_image(img, &output_path).context("Saving output artifact")?;
-
-    let artifact_path = artifact_manager.output_artifact_path(&output);
-    fs::rename(output_path, artifact_path).context("Moving output artifact")?;
+    let output_pathbuf = artifact_manager
+        .output_artifact_path(&output);
+    let output_path = output_pathbuf
+        .to_str()
+        .unwrap();
+    photon::native::save_image(img, output_path).context("Saving output artifact")?;
 
     Ok(PluginResult {
         phase: Phase::Succeeded,

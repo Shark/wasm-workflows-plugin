@@ -25,5 +25,5 @@ default-features = false
 
 [dependencies.workflow-model]
 git = "https://github.com/Shark/wasm-workflows-plugin"
-rev = "379a7bde237d73d3e25cf13a055ce12a491d09cb"
+rev = "b49c84bfba1314825c8f4a94f871c67e972cf04c"
 features = ["plugin"]
