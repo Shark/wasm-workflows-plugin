@@ -50,7 +50,7 @@ impl ArtifactManager {
             }
         };
         let path = wd.path().join(INPUT_ARTIFACTS_PATH);
-        let path = path.join(&artifact.name);
+        let path = path.join(artifact.working_dir_path());
         let mut output_file = tokio::fs::File::create(&path).await.context(format!(
             "Creating file for input artifact {} at {:?}",
             &artifact.name, &path
@@ -78,7 +78,7 @@ impl ArtifactManager {
         artifact: &ArtifactRef,
     ) -> anyhow::Result<ArtifactRef> {
         let path = wd.path().join(OUTPUT_ARTIFACTS_PATH);
-        let path = path.join(&artifact.name);
+        let path = path.join(artifact.working_dir_path());
         let mut input_file = tokio::fs::File::open(&path).await.context(format!(
             "Opening file for output artifact {} at {:?}",
             &artifact.name, &path

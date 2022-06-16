@@ -17,6 +17,16 @@ pub struct ArtifactRef {
     pub s3: Option<S3Artifact>,
 }
 
+impl ArtifactRef {
+    pub(crate) fn working_dir_path(&self) -> &str {
+        if self.path.starts_with("/") {
+            &self.path[1..]
+        } else {
+            &self.path
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[allow(dead_code)]
 pub struct S3Artifact {
