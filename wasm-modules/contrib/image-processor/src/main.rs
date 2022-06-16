@@ -39,16 +39,16 @@ fn run(
     let input_artifact = invocation
         .artifacts
         .iter()
-        .find(|artifact| artifact.name == "input.jpg");
+        .find(|artifact| artifact.name == "input");
     if input_artifact.is_none() {
-        return Err(anyhow!("Artifact 'input.jpg' not present but required"));
+        return Err(anyhow!("Artifact 'input' not present but required"));
     }
     let input_artifact = input_artifact.unwrap();
 
     let watermark_artifact = invocation
         .artifacts
         .iter()
-        .find(|artifact| artifact.name == "watermark.jpg");
+        .find(|artifact| artifact.name == "watermark");
 
     let img_bytes = fs::read(artifact_manager.input_artifact_path(input_artifact))
         .context("Reading input artifact")?;
