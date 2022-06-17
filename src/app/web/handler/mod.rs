@@ -114,6 +114,10 @@ impl IntoResponse for AppError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Wasm module could not be precompiled",
             ),
+            AppError::ModuleExecution(WasmError::Timeout(_)) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Wasm module did not report result in time (timeout)",
+            ),
         };
 
         let response = Json(ExecuteTemplateResponse {

@@ -28,6 +28,7 @@ itertools = "0.10.3"
 zstd = "0.10.0"
 base64 = "0.13.0"
 openssl = { version = "0.10.40", features = ["vendored"] } # statically links openssl in the binary
+futures = "0.3.21"
 
 tokio = { version = "1.17.0", features = ["full"] }
 async-trait = "0.1.53"
@@ -51,6 +52,7 @@ k8s-openapi = { version = "0.14.0", features = ["v1_22"] }
 kube = { version = "0.72.0", features = ["runtime"] }
 kube-client = "0.72.0"
 kube-core = "0.72.0"
+kube-runtime = "0.72.0"
 
 workflow-model = { path = "./crates/workflow-model", features = ["host"] }
 

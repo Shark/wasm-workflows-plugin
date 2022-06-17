@@ -24,4 +24,5 @@ pub enum WasmError {
     Precompile(Error),
     Invocation(Error),
     OutputProcessing(Error),
+    Timeout(Error),
 }

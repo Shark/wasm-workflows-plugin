@@ -58,9 +58,6 @@ pub struct Config {
 
     #[clap(long = "distributed-wait-duration", default_value_t = 300)]
     pub distributed_wait_duration: u16,
-
-    #[clap(long = "distributed-wait-interval", default_value_t = 250)]
-    pub distributed_wait_interval: u16,
 }
 
 impl Config {

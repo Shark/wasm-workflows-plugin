@@ -2,35 +2,33 @@ use crate::app::model::ModulePermissions;
 use crate::app::wasm::{Runner, WasmError};
 use anyhow::anyhow;
 use async_trait::async_trait;
-use chrono::Utc;
+use futures::stream::{BoxStream, SelectAll};
+use futures::TryStreamExt;
+use futures::{stream, try_join, StreamExt};
 use k8s_openapi::api::core::v1::{ConfigMap, Container, Pod, PodSpec, Toleration};
 use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
 use kube::api::PostParams;
 use kube::{Api, ResourceExt};
-use kube_core::params::DeleteParams;
+use kube_core::params::{DeleteParams, ListParams};
+use kube_runtime::{watcher, WatchStreamExt};
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
-use tokio::time::sleep;
 use tracing::{debug, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use workflow_model::model::{Phase, PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
+use workflow_model::model::{PluginInvocation, PluginResult, S3ArtifactRepositoryConfig};
 
 pub struct DistributedRunner {
     client: kube::Client,
     namespace: Option<String>,
-    wait_config: ResultWaitConfig,
+    config: Config,
 }
 
 impl DistributedRunner {
-    pub fn new(
-        client: kube::Client,
-        namespace: Option<String>,
-        wait_config: ResultWaitConfig,
-    ) -> Self {
+    pub fn new(client: kube::Client, namespace: Option<String>, config: Config) -> Self {
         DistributedRunner {
             client,
             namespace,
-            wait_config,
+            config,
         }
     }
 }
@@ -51,31 +49,15 @@ impl Runner for DistributedRunner {
         artifact_repo_config: Option<S3ArtifactRepositoryConfig>,
     ) -> anyhow::Result<PluginResult, WasmError> {
         let config_map_name = self
-            .create_config_map(
-                &invocation,
-                &artifact_repo_config,
-                &tracing::Span::current(),
-            )
+            .create_config_map(&invocation, &artifact_repo_config, &Span::current())
             .await?;
         let pod_name = self.create_pod(&config_map_name, oci_image).await?;
-        let result = match self.wait_for_result(&config_map_name, &pod_name).await {
-            Ok(result) => {
-                self.delete_pod(&pod_name).await?;
-                result
-            }
-            Err(why) => {
-                self.delete_pod(&pod_name).await?;
-                return Err(why);
-            }
-        };
-        if result.is_none() {
-            return Ok(PluginResult {
-                phase: Phase::Failed,
-                message: "Timeout: Result not received in time".into(),
-                outputs: Default::default(),
-            });
-        }
-        Ok(result.unwrap())
+        let result = self.wait_for_result(&config_map_name, &pod_name).await;
+        try_join!(
+            self.delete_pod(&pod_name),
+            self.delete_config_map(&config_map_name)
+        )?;
+        return result;
     }
 }
 
@@ -129,7 +111,7 @@ impl DistributedRunner {
         match config_maps.create(&pp, &config_map).await {
             Ok(config_map) => {
                 let name = config_map.name();
-                tracing::debug!(?name, "Created ConfigMap");
+                debug!(?name, "Created ConfigMap");
                 Ok(name)
             }
             Err(why) => Err(WasmError::Invocation(
@@ -190,7 +172,7 @@ impl DistributedRunner {
         let pp = PostParams::default();
         match pods.create(&pp, &pod).await {
             Ok(pod) => {
-                tracing::debug!(name = ?pod.name(), "Created Pod");
+                debug!(name = ?pod.name(), "Created Pod");
                 Ok(pod.name())
             }
             Err(why) => Err(WasmError::Invocation(anyhow!(why).context("Creating Pod"))),
@@ -202,82 +184,60 @@ impl DistributedRunner {
         &self,
         config_map_name: &str,
         pod_name: &str,
-    ) -> anyhow::Result<Option<PluginResult>, WasmError> {
+    ) -> anyhow::Result<PluginResult, WasmError> {
         let config_maps: Api<ConfigMap> = self.api();
         let pods: Api<Pod> = self.api();
-        let mut tries = 0;
-        let mut result: Option<String> = None;
-        let started_at = Utc::now();
-        loop {
-            let elapsed_seconds = (Utc::now() - started_at).num_seconds();
-            if elapsed_seconds > self.wait_config.duration as i64 {
-                break;
-            }
-            let pod = pods
-                .get(pod_name)
-                .await
-                .map_err(|e| WasmError::Invocation(anyhow!(e).context("Polling Pod")))?;
-            if let Some(status) = pod.status {
-                if let Some(phase) = status.phase {
-                    debug!("Pod phase is {}", phase);
-                    match phase.as_str() {
-                        "Pending" => {
-                            if elapsed_seconds > 10 {
-                                // Fail when pending for more than 10s
-                                return Err(WasmError::Invocation(anyhow!(
-                                    "Pod pending for more than 10s, probably no Krustlet available"
-                                )));
-                            }
-                            tries += 1;
-                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
-                            continue;
-                        }
-                        "Running" => {
-                            tries += 1;
-                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
-                            continue;
-                        }
-                        "Succeeded" => {
-                            debug!("Pod has succeeded");
-                        }
-                        "Failed" => return Err(WasmError::Invocation(anyhow!("Pod has failed"))),
-                        _ => {
-                            tries += 1;
-                            sleep(Duration::from_millis(self.wait_config.interval as u64)).await;
-                            continue;
-                        }
-                    }
-                }
-            }
-            let config_map = config_maps
-                .get(config_map_name)
-                .await
-                .map_err(|e| WasmError::Invocation(anyhow!(e).context("Polling ConfigMap")))?;
-            match config_map.data.unwrap_or_default().get("result.json") {
-                Some(this_result) => {
-                    result = Some(this_result.clone());
-                }
-                None => tracing::debug!(?tries, "ConfigMap does not contain result"),
-            }
-            if result.is_some() {
-                break;
-            }
-            tries += 1;
-        }
-        match &result {
-            Some(str) => Ok(Some(
-                serde_json::from_str(str).map_err(|e| WasmError::Invocation(anyhow!(e)))?,
-            )),
-            None => Ok(None),
-        }
+        let field_selector_pod = format!("metadata.name={}", pod_name);
+        let field_selector_config_map = format!("metadata.name={}", config_map_name);
+        let events = stream::select_all(vec![
+            watcher(pods, ListParams::default().fields(&field_selector_pod))
+                .applied_objects()
+                .map_ok(|p| WatchEvent::Pod(Box::new(p)))
+                .boxed(),
+            watcher(
+                config_maps,
+                ListParams::default().fields(&field_selector_config_map),
+            )
+            .applied_objects()
+            .map_ok(|c| WatchEvent::ConfigMap(Box::new(c)))
+            .boxed(),
+        ]);
+        let result = match tokio::time::timeout(
+            Duration::from_secs(self.config.wait_duration as u64),
+            watch_events(events),
+        )
+        .await
+        {
+            Ok(result) => match result {
+                Ok(result) => result,
+                Err(why) => return Err(why),
+            },
+            Err(timeout_err) => return Err(WasmError::Timeout(timeout_err.into())),
+        };
+        serde_json::from_str(&result).map_err(|e| WasmError::Invocation(anyhow!(e)))
     }
 
     #[tracing::instrument(name = "wasm.delete_pod", level = "debug", skip(self))]
-    async fn delete_pod(&self, pod_name: &str) -> anyhow::Result<(), WasmError> {
+    async fn delete_pod(&self, pod_name: &str) -> SomeResult {
         let pods: Api<Pod> = self.api();
         match pods.delete(pod_name, &DeleteParams::default()).await {
             Ok(_) => Ok(()),
-            Err(why) => Err(WasmError::Invocation(anyhow!(why).context("Deleting pod"))),
+            Err(why) => Err(WasmError::Invocation(
+                anyhow!(why).context("Deleting ConfigMap"),
+            )),
+        }
+    }
+
+    async fn delete_config_map(&self, config_map_name: &str) -> SomeResult {
+        let config_maps: Api<ConfigMap> = self.api();
+        match config_maps
+            .delete(config_map_name, &DeleteParams::default())
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(why) => Err(WasmError::Invocation(
+                anyhow!(why).context("Deleting ConfigMap"),
+            )),
         }
     }
 
@@ -300,9 +260,61 @@ impl DistributedRunner {
     }
 }
 
-pub struct ResultWaitConfig {
-    pub duration: u16,
-    pub interval: u16,
+type SomeResult = anyhow::Result<(), WasmError>;
+
+async fn watch_events(
+    mut events: SelectAll<BoxStream<'_, Result<WatchEvent, kube_runtime::watcher::Error>>>,
+) -> anyhow::Result<String, WasmError> {
+    while let Some(e) = events
+        .try_next()
+        .await
+        .map_err(|why| WasmError::Invocation(anyhow!(why)))?
+    {
+        match e {
+            WatchEvent::ConfigMap(config_map) => {
+                match config_map.data.unwrap_or_default().get("result.json") {
+                    Some(result) => return Ok(result.clone()),
+                    None => {
+                        debug!("Result not (yet) present in ConfigMap");
+                        continue;
+                    }
+                }
+            }
+            WatchEvent::Pod(pod) => {
+                if let Some(status) = pod.status {
+                    if let Some(phase) = status.phase {
+                        debug!("Pod phase is {}", phase);
+                        match phase.as_str() {
+                            "Pending" => continue,
+                            "Running" => continue,
+                            "Succeeded" => {
+                                debug!("Pod has succeeded");
+                            }
+                            "Failed" => {
+                                return Err(WasmError::Invocation(anyhow!("Pod has failed")))
+                            }
+                            other => {
+                                debug!("Unknown phase {}", other);
+                                continue;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Err(WasmError::Invocation(anyhow!(
+        "Impossible state while watching events for Pod & ConfigMap"
+    )))
+}
+
+enum WatchEvent {
+    ConfigMap(Box<ConfigMap>),
+    Pod(Box<Pod>),
+}
+
+pub struct Config {
+    pub wait_duration: u16,
 }
 
 const DEFAULT_NAMESPACE: &str = "default";

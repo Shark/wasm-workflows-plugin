@@ -19,7 +19,7 @@ pub struct ArtifactRef {
 
 impl ArtifactRef {
     pub(crate) fn working_dir_path(&self) -> &str {
-        if self.path.starts_with("/") {
+        if self.path.starts_with('/') {
             &self.path[1..]
         } else {
             &self.path
