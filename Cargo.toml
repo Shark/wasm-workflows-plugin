@@ -14,7 +14,8 @@ exclude = [
     "wasm-modules/examples/text2qr",
     "wasm-modules/contrib/image-processor",
     "wasm-modules/contrib/http-request",
-    "wasm-modules/templates/rust"
+    "wasm-modules/templates/rust",
+    "benchmark/runner"
 ]
 
 [dependencies]

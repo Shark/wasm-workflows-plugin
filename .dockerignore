@@ -2,6 +2,7 @@ demo-mod
 plugin
 Dockerfile
 target
+benchmark
 wasm-modules/contrib/http-request/target
 wasm-modules/contrib/image-processor/target
 wasm-modules/examples/ferris-says/target
