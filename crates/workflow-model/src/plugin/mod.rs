@@ -45,10 +45,16 @@ impl ArtifactManager {
 }
 
 impl ArtifactManager {
+    #[cfg(target_os = "wasi")]
     pub fn input_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
         self.base_path
             .join(INPUT_ARTIFACTS_PATH)
             .join(artifact.working_dir_path())
+    }
+
+    #[cfg(not(target_os = "wasi"))]
+    pub fn input_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
+        PathBuf::from(artifact.path.to_owned())
     }
 
     pub fn open_input_artifact(&self, artifact: &ArtifactRef) -> anyhow::Result<File> {
@@ -61,10 +67,16 @@ impl ArtifactManager {
         })
     }
 
+    #[cfg(target_os = "wasi")]
     pub fn output_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
         self.base_path
             .join(OUTPUT_ARTIFACTS_PATH)
             .join(artifact.working_dir_path())
+    }
+
+    #[cfg(not(target_os = "wasi"))]
+    pub fn output_artifact_path(&self, artifact: &ArtifactRef) -> PathBuf {
+        PathBuf::from(artifact.path.to_owned())
     }
 
     pub fn open_output_artifact(&self, artifact: &ArtifactRef) -> anyhow::Result<File> {
