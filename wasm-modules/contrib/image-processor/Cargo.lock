@@ -1458,7 +1458,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 [[package]]
 name = "workflow-model"
 version = "0.1.0"
-source = "git+https://github.com/Shark/wasm-workflows-plugin?rev=b49c84bfba1314825c8f4a94f871c67e972cf04c#b49c84bfba1314825c8f4a94f871c67e972cf04c"
+source = "git+https://github.com/Shark/wasm-workflows-plugin?rev=de01a836041b09f9322cc1e3243d890fa8b6b547#de01a836041b09f9322cc1e3243d890fa8b6b547"
 dependencies = [
  "anyhow",
  "serde",

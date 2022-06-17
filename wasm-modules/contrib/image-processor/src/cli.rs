@@ -16,6 +16,9 @@ pub struct Config {
 
     #[clap(long = "enable-telemetry", env = "OTEL_ENABLE")]
     pub enable_telemetry: bool,
+
+    #[clap(long = "workflow-name")]
+    pub workflow_name: String,
 }
 
 fn pipeline() -> PipelineBuilder {
@@ -43,19 +46,19 @@ pub(crate) fn initialize() -> PluginInvocation {
         init_telemetry().expect("initialize telemetry")
     }
     let mut invocation = PluginInvocation {
-        workflow_name: "dummy".to_string(),
+        workflow_name: config.workflow_name,
         plugin_options: vec![],
         parameters: vec![],
         artifacts: vec![ArtifactRef {
             name: "input".to_string(),
-            path: "input".to_string(),
+            path: "/input.jpg".to_string(),
             s3: None,
         }],
     };
     if config.watermark {
         invocation.artifacts.push(ArtifactRef {
             name: "watermark".to_string(),
-            path: "watermark".to_string(),
+            path: "/watermark.jpg".to_string(),
             s3: None,
         })
     }

@@ -5,9 +5,7 @@ use std::fs;
 use std::str::FromStr;
 #[cfg(not(target_os = "wasi"))]
 use tracing::info_span;
-use workflow_model::model::{
-    ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult,
-};
+use workflow_model::model::{ArtifactRef, Outputs, Phase, PluginInvocation, PluginResult};
 use workflow_model::plugin::ArtifactManager;
 
 #[cfg(target_os = "wasi")]
@@ -22,7 +20,11 @@ mod cli;
 fn main() {
     let invocation = cli::initialize();
     let artifact_manager = ArtifactManager::new_with_base_path(std::env::current_dir().unwrap());
-    let result = info_span!("processor.run").in_scope(|| run(invocation, artifact_manager));
+    let result = info_span!(
+        "processor.run",
+        workflow_name = invocation.workflow_name.as_str()
+    )
+    .in_scope(|| run(invocation, artifact_manager));
     match result {
         Ok(_) => {}
         Err(why) => {
@@ -86,11 +88,8 @@ fn run(
         path: "/output.jpg".to_string(),
         s3: None,
     };
-    let output_pathbuf = artifact_manager
-        .output_artifact_path(&output);
-    let output_path = output_pathbuf
-        .to_str()
-        .unwrap();
+    let output_pathbuf = artifact_manager.output_artifact_path(&output);
+    let output_path = output_pathbuf.to_str().unwrap();
     photon::native::save_image(img, output_path).context("Saving output artifact")?;
 
     Ok(PluginResult {
