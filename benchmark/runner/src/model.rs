@@ -1,11 +1,29 @@
 use anyhow::anyhow;
+use chrono::Utc;
 use kube::CustomResource;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tracing::{debug, warn};
+use tracing::debug;
+
+#[derive(Clone, Debug)]
+pub enum Mode {
+    WasmLocal,
+    WasmDistributed,
+    Container,
+}
+
+impl ToString for Mode {
+    fn to_string(&self) -> String {
+        match self {
+            Mode::WasmLocal => "wasm-local".to_string(),
+            Mode::WasmDistributed => "wasm-distributed".to_string(),
+            Mode::Container => "container".to_string(),
+        }
+    }
+}
 
 const RAW_WORKFLOW_CONTAINER: &str = r#"
 apiVersion: argoproj.io/v1alpha1
@@ -32,7 +50,7 @@ spec:
         s3:
           key: IMG_5994.jpg
     container:
-      image: 192.168.64.2:32000/container-image-processor:v5
+      image: 192.168.64.2:32000/container-image-processor:v6
       command: [image-processor, '--workflow-name={{ workflow.name }}']
       env:
       - name: OTEL_ENABLE
@@ -72,8 +90,8 @@ spec:
     plugin:
       wasm:
         module:
-          # oci: ghcr.io/shark/wasm-workflows-plugin-image-processor:latest
-          oci: 192.168.64.2:32000/image-processor:latest
+          oci: ghcr.io/shark/wasm-workflows-plugin-image-processor:latest
+          # oci: 192.168.64.2:32000/image-processor:latest
 "#;
 
 pub struct SerializedWorkflow {
@@ -84,15 +102,20 @@ pub struct SerializedWorkflow {
 
 pub(crate) fn container_workflow(num_images: u16) -> SerializedWorkflow {
     let base: MyWorkflow = serde_yaml::from_str(RAW_WORKFLOW_CONTAINER).unwrap();
-    return serialize_workflow(extend_workflow(base, num_images));
+    return serialize_workflow(extend_workflow(base, "process-image", num_images));
 }
 
-pub(crate) fn wasm_workflow(num_images: u16) -> SerializedWorkflow {
+pub(crate) fn wasm_local_workflow(num_images: u16) -> SerializedWorkflow {
     let base: MyWorkflow = serde_yaml::from_str(RAW_WORKFLOW_WASM).unwrap();
-    return serialize_workflow(extend_workflow(base, num_images));
+    return serialize_workflow(extend_workflow(base, "process-image", num_images));
 }
 
-fn extend_workflow(mut base: MyWorkflow, num_images: u16) -> MyWorkflow {
+pub(crate) fn wasm_distributed_workflow(num_images: u16) -> SerializedWorkflow {
+    let base: MyWorkflow = serde_yaml::from_str(RAW_WORKFLOW_WASM).unwrap();
+    return serialize_workflow(extend_workflow(base, "process-image", num_images));
+}
+
+fn extend_workflow(mut base: MyWorkflow, template_name: &str, num_images: u16) -> MyWorkflow {
     let name_postfix = thread_rng()
         .sample_iter(&Alphanumeric)
         .take(10)
@@ -109,7 +132,7 @@ fn extend_workflow(mut base: MyWorkflow, num_images: u16) -> MyWorkflow {
     let new_steps = (0..num_images)
         .map(|n| TemplateRef {
             name: format!("process-{}", n),
-            template: "process-image".into(),
+            template: template_name.into(),
             arguments: Arguments {
                 parameters: Default::default(),
                 artifacts: Default::default(),
@@ -296,9 +319,29 @@ pub enum WorkflowResult {
     Running,
 }
 
+impl ToString for WorkflowResult {
+    fn to_string(&self) -> String {
+        match self {
+            WorkflowResult::Succeeded => "succeeded".to_string(),
+            WorkflowResult::Failed => "failed".to_string(),
+            WorkflowResult::Running => "running".to_string(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct WorkflowStats {
-    pub name: String,
+    pub workflow_name: String,
     pub result: WorkflowResult,
-    pub total_time_taken: usize,
+    pub mode: Mode,
+    pub num_parallel_images: u16,
+    pub finished_at: chrono::DateTime<Utc>,
+    pub total_time_taken_sec: usize,
+    pub invocation_stats: Vec<InvocationStats>,
+}
+
+#[derive(Debug)]
+pub struct InvocationStats {
+    pub timestamp: chrono::DateTime<Utc>,
+    pub processing_ms: usize,
 }
