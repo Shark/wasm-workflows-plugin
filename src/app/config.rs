@@ -58,6 +58,9 @@ pub struct Config {
 
     #[clap(long = "distributed-wait-duration", default_value_t = 300)]
     pub distributed_wait_duration: u16,
+
+    #[clap(long = "num-concurrent-requests")]
+    pub num_concurrent_requests: Option<u16>,
 }
 
 impl Config {
@@ -85,6 +88,17 @@ impl Config {
             return Ok(Some(ca_crt_b64));
         }
         Ok(None)
+    }
+
+    pub fn num_concurrent_requests(&self) -> u16 {
+        if let Some(n) = self.num_concurrent_requests {
+            n
+        } else {
+            match self.mode() {
+                Mode::Local => 5,
+                Mode::Distributed => 100,
+            }
+        }
     }
 }
 

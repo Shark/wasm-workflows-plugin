@@ -1018,9 +1018,9 @@ dependencies = [
 
 [[package]]
 name = "http-body"
-version = "0.4.4"
+version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ff4f84919677303da5f147645dbea6b1881f368d03ac84e1dc09031ebd7b2c6"
+checksum = "d5f38f16d184e36f2408a55281cd658ecbd3ca05cce6d6510a176eca393e26d1"
 dependencies = [
  "bytes",
  "http",
@@ -1356,7 +1356,7 @@ dependencies = [
  "tokio",
  "tokio-util 0.7.0",
  "tower",
- "tower-http 0.3.3",
+ "tower-http 0.3.4",
  "tracing",
 ]
 
@@ -2753,14 +2753,13 @@ dependencies = [
  "pin-project-lite",
  "tower-layer",
  "tower-service",
- "tracing",
 ]
 
 [[package]]
 name = "tower-http"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d342c6d58709c0a6d48d48dabbb62d4ef955cf5f0f3bbfd845838e7ae88dbae"
+checksum = "3c530c8675c1dbf98facee631536fa116b5fb6382d7dd6dc1b118d970eafe3ba"
 dependencies = [
  "base64",
  "bitflags",
@@ -3153,7 +3152,8 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "tokio",
- "tower-http 0.2.3",
+ "tower",
+ "tower-http 0.3.4",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
