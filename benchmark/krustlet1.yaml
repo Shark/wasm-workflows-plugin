@@ -1,0 +1,79 @@
+---
+apiVersion: coordination.k8s.io/v1
+kind: Lease
+metadata:
+  name: krustlet1
+  namespace: kube-node-lease
+spec:
+  holderIdentity: krustlet1
+  leaseDurationSeconds: 40
+  renewTime: "2022-06-19T12:27:28.521941Z"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: krustlet1
+  labels:
+    app: krustlet1
+spec:
+  ports: []
+  clusterIP: None
+  selector:
+    app: krustlet1
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: krustlet1
+spec:
+  selector:
+    matchLabels:
+      app: krustlet1
+  serviceName: krustlet1
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: krustlet1
+    spec:
+      automountServiceAccountToken: false
+      nodeName: k3s-worker1
+      terminationGracePeriodSeconds: 10
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: NotIn
+                    values:
+                      - 'true'
+      containers:
+        - name: krustlet
+          image: localhost:32000/krustlet:latest
+          imagePullPolicy: Always
+          ports: []
+          args:
+          - --node-name=krustlet1
+          - --insecure-registries=docker-registry.default.svc.cluster.local:5000
+          - --node-ip=192.168.0.1
+          - --hostname=krustlet1
+          - --enable-telemetry=true
+          - --max-pods=100
+          #- --bootstrap-file=/work/.krustlet/config/bootstrap.conf
+          env:
+            - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
+              value: jaeger-agent-svc.default.svc.cluster.local
+            - name: OTEL_EXPORTER_JAEGER_AGENT_PORT
+              value: '6831'
+            - name: RUST_LOG
+              value: info,regalloc=warn
+          resources:
+            requests:
+              cpu: 2000m
+              memory: 7000Mi
+            limits:
+              cpu: 2000m
+              memory: 7000Mi

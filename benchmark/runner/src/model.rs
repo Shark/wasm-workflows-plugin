@@ -35,6 +35,15 @@ spec:
   entrypoint: process-all
   podGC:
     strategy: OnWorkflowCompletion
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: NotIn
+                values:
+                  - 'true'
   templates:
   - name: process-all
     dag:
@@ -50,7 +59,7 @@ spec:
         s3:
           key: IMG_5994.jpg
     container:
-      image: 192.168.64.2:32000/container-image-processor:v6
+      image: localhost:32000/container-image-processor:latest
       command: [image-processor, '--workflow-name={{ workflow.name }}']
       env:
       - name: OTEL_ENABLE
@@ -90,8 +99,7 @@ spec:
     plugin:
       wasm:
         module:
-          oci: ghcr.io/shark/wasm-workflows-plugin-image-processor:latest
-          # oci: 192.168.64.2:32000/image-processor:latest
+          oci: docker-registry.default.svc.cluster.local:5000/wasm-workflows-plugin-image-processor:latest
 "#;
 
 pub struct SerializedWorkflow {
@@ -290,7 +298,7 @@ pub(crate) struct WorkflowStatus {
 impl WorkflowStatus {
     pub fn result(&self) -> anyhow::Result<WorkflowResult> {
         match self.phase.as_str() {
-            "Failed" => Ok(WorkflowResult::Failed),
+            "Failed" | "Error" => Ok(WorkflowResult::Failed),
             "Succeeded" => Ok(WorkflowResult::Succeeded),
             "Running" => {
                 let progresses: Vec<&str> = self.progress.split("/").collect();
