@@ -1,0 +1,12 @@
+version: '3'
+services:
+  jupyter:
+    image: jupyter/scipy-notebook:latest
+    ports:
+      - '8888:8888'
+    volumes:
+      - ./jupyter-data:/home/jovyan/work
+    command:
+      - start-notebook.sh
+      # password is 'password'
+      - "--NotebookApp.password='sha1:e08f70d25a5c:d9bd69f31d8be5d8b38c3f6f3cc24a58d2b2e53f'"
