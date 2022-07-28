@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ExecutorPlugin
 metadata:
-  name: wasm_distributed
+  name: wasm
   namespace: argo-workflows
 spec:
   sidecar:
     container:
-      image: ghcr.io/shark/wasm-workflows-plugin:v0.3.1
+      image: ghcr.io/shark/wasm-workflows-plugin:v0.3.0
       name: wasm-workflows-plugin
       ports:
       - containerPort: 3000
@@ -31,8 +31,8 @@ spec:
         value: debug
       - name: MODE
         value: local
-      - name: INSECURE_OCI_REGISTRIES
-        value: 192.168.64.2:32000
+#      - name: INSECURE_OCI_REGISTRIES
+#        value: 192.168.64.2:32000
 #      - name: OTEL_ENABLE
 #        value: '1'
 #      - name: OTEL_EXPORTER_JAEGER_AGENT_HOST

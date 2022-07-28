@@ -6,7 +6,7 @@ metadata:
 spec:
   sidecar:
     container:
-      image: ghcr.io/shark/wasm-workflows-plugin:v0.3.1
+      image: ghcr.io/shark/wasm-workflows-plugin:v0.3.0
       name: wasm-workflows-plugin
       ports:
       - containerPort: 3000
@@ -52,10 +52,10 @@ spec:
         value: debug
       - name: MODE
         value: distributed
-      - name: INSECURE_OCI_REGISTRIES
-        value: 192.168.64.2:32000
       - name: ARGO_CONTROLLER_CONFIGMAP
         value: workflow-controller-configmap
+#      - name: INSECURE_OCI_REGISTRIES
+#        value: docker-registry.default.svc.cluster.local:5000
 #      - name: OTEL_ENABLE
 #        value: '1'
 #      - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
