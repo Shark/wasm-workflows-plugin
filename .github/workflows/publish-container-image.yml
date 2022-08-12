@@ -5,12 +5,18 @@ on:
       version:
         required: true
         type: string
+    outputs:
+      container_image:
+        description: the location of the container image, e.g., ghcr.io/shark/wasm-workflows-plugin:v123
+        value: ${{ jobs.build.outputs.container_image }}
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: shark/wasm-workflows-plugin
 jobs:
   build:
     runs-on: ubuntu-latest
+    outputs:
+      container_image: ${{ steps.push.outputs.container_image }}
     steps:
     - name: Download container image artifact
       uses: actions/download-artifact@v3
@@ -29,8 +35,11 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push Docker image
+      id: push
       run: |
         docker tag sh4rk/wasm-workflows-plugin:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
         docker tag sh4rk/wasm-workflows-plugin:${{ inputs.version }} ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}
         docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+        echo "::set-output name=container_image::${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.version }}"

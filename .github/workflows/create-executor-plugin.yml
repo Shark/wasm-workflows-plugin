@@ -1,0 +1,36 @@
+name: Builds the executor plugin
+on:
+  workflow_call:
+    inputs:
+      container_image:
+        required: true
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: azure/setup-kubectl@v3
+
+    - name: Install Argo Workflows CLI
+      run: |
+        curl -sSL https://github.com/argoproj/argo-workflows/releases/download/v3.3.9/argo-linux-amd64.gz | gunzip > /usr/local/bin/argo-linux-amd64
+        mv /usr/local/bin/argo-linux-amd64 /usr/local/bin/argo
+        chmod +x /usr/local/bin/argo
+
+    - uses: actions/checkout@v2
+
+    - name: Build Argo Executor Plugin
+      run: |
+        cd argo-plugin
+        echo '[{"op": "replace", "path": "/spec/sidecar/container/image", "value": "${{ inputs.container_image }}"}]' > image.json
+        kubectl kustomize . > plugin_with_image.yaml
+        mv plugin_with_image.yaml plugin.yaml
+        argo executor-plugin build .
+
+    - name: Store the YAML as an artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: argo-executor-plugin
+        path: argo-plugin/wasm-executor-plugin-configmap.yaml
+        retention-days: 7
+        if-no-files-found: error

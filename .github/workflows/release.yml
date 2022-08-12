@@ -13,23 +13,56 @@ jobs:
       version: ${{ needs.build.outputs.version }}
   changelog:
     uses: ./.github/workflows/create-changelog.yml
+  executor_plugin:
+    uses: ./.github/workflows/create-executor-plugin.yml
+    needs: [publish]
+    with:
+      container_image: ${{ needs.publish.outputs.container_image }}
   release:
     runs-on: ubuntu-latest
-    needs: [publish, changelog]
+    needs: [publish, changelog, executor_plugin]
     steps:
     - name: Checkout
       uses: actions/checkout@v2
       with:
         path: repo
         fetch-depth: 0
-    - name: Create release
-      id: create_release
-      uses: actions/create-release@latest
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Download executor plugin artifact
+      uses: actions/download-artifact@v3
       with:
-        tag_name: ${{ needs.changelog.outputs.tag }}
-        release_name: Release ${{ needs.changelog.outputs.tag }}
+        name: argo-executor-plugin
+        path: argo-executor-plugin
+
+    - name: Create release
+      uses: softprops/action-gh-release@v1
+      with:
         draft: false
         prerelease: true
-        body: ${{ needs.changelog.outputs.changelog }}
+        name: Release ${{ needs.changelog.outputs.tag }}
+        tag_name: ${{ needs.changelog.outputs.tag }}
+        body: |
+          # Usage
+
+          Installing the plugin is simple.
+
+          Ensure that you enabled executor plugins [as described in Argo Workflows' documentation](https://argoproj.github.io/argo-workflows/executor_plugins/).
+
+          Copy the URL to the ConfigMap YAML in this release and apply it with `kubectl`:
+
+          ```
+          kubectl apply -f https://.../wasm-executor-plugin-configmap.yaml
+          ```
+
+          That's all you need to submit a workflow with a Wasm module. Use our example:
+
+          ```
+          kubectl create -f https://raw.githubusercontent.com/Shark/wasm-workflows-plugin/67ae607ec65e1ac93bc1749c5f7a9bde4b673cfd/wasm-modules/examples/ferris-says/workflow.yaml
+          ```
+
+          That's it. :sparkles:
+
+          # Changelog
+
+          ${{ needs.changelog.outputs.changelog }}
+        files: argo-executor-plugin/wasm-executor-plugin-configmap.yaml

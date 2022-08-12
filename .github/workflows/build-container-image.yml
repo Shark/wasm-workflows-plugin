@@ -50,9 +50,10 @@ jobs:
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
-    - name: Store the image an artifact
-      uses: actions/upload-artifact@v2.3.1
+    - name: Store the image as an artifact
+      uses: actions/upload-artifact@v3
       with:
         name: container-image
         path: /tmp/container-image.tar.bz2
         retention-days: 7
+        if-no-files-found: error
