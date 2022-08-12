@@ -8,7 +8,8 @@
     "znck.grammarly",
     "valentjn.vscode-ltex",
     "bierner.emojisense",
-    "bierner.markdown-emoji"
+    "bierner.markdown-emoji",
+    "humao.rest-client"
   ],
   "dockerFile": "Dockerfile",
   "settings": {

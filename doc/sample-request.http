@@ -1,0 +1,35 @@
+POST http://localhost:3000/api/v1/template.execute
+Content-Type: application/json
+
+{
+  "template": {
+    "inputs": {
+      "artifacts": [],
+      "parameters": [{
+        "name": "text",
+        "value": "Hello human!"
+      }]
+    },
+    "metadata": {},
+    "name": "hello",
+    "outputs": {
+      "parameters": [{
+        "name": "message",
+        "value": ""
+      }]
+    },
+    "plugin": {
+      "wasm": {
+        "module": {
+          "oci": "ghcr.io/shark/wasm-workflows-plugin-example-ferris-says:latest"
+        }
+      }
+    }
+  },
+  "workflow": {
+    "metadata": {
+      "name": "hello-n7nbj"
+    }
+  }
+}
+

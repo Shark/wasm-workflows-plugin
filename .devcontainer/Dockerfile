@@ -7,4 +7,7 @@ USER rust
 RUN touch ~/.zshrc \
  && rustup component add rustfmt \
  && rustup component add clippy \
- && cargo install cargo-expand
+ && cargo install cargo-expand \
+ && git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh \
+ && cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc \
+ && echo 'ZSH_THEME="simple"' >> ~/.zshrc
