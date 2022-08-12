@@ -1,0 +1,24 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agent
+rules:
+- apiGroups: # this was added
+  - argoproj.io
+  resources:
+  - workflowtaskresults
+  verbs:
+  - create
+- apiGroups: # this already exists
+  - argoproj.io
+  resources:
+  - workflowtasksets
+  verbs:
+  - list
+  - watch
+- apiGroups: # this already exists
+  - argoproj.io
+  resources:
+  - workflowtasksets/status
+  verbs:
+  - patch

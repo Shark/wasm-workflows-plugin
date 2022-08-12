@@ -1,0 +1,12 @@
+mode: standalone
+rootUser: minioadmin
+rootPassword: minioadmin
+persistence:
+  enabled: true
+resources:
+  requests:
+    memory: 256Mi
+consoleService:
+  type: NodePort
+  port: "9001"
+  nodePort: 31207

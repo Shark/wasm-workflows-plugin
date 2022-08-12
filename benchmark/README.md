@@ -14,7 +14,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
 ## Installation
 
 1. **Install k3s**
-   
+
    Use [quick installation method](https://rancher.com/docs/k3s/latest/en/installation/install-options/#options-for-installation-with-script).
 
    Install it on the primary VM:
@@ -24,7 +24,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    curl -sfL https://get.k3s.io | sh -
    systemctl edit k3s
    ```
-   
+
    Add:
 
    ```
@@ -44,7 +44,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    export INSTALL_K3S_VERSION="v1.22.10%2Bk3s1"
    curl -sfL https://get.k3s.io | sh -
    ```
-   
+
    Do the same edit for the `k3s-agent` service.
 
 2. **Deploy Docker Registry**
@@ -55,7 +55,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    helm repo add twuni https://helm.twun.io
    helm install docker-registry twuni/docker-registry -f values.yaml
    ```
-   
+
    `values.yaml`:
 
    ```yaml
@@ -75,7 +75,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    helm repo add minio https://charts.min.io/
    helm install minio minio/minio --values values.yaml
    ```
-   
+
    `values.yaml`:
 
    ```yaml
@@ -95,7 +95,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    nodeSelector:
      node-role.kubernetes.io/master: 'true'
    ```
-   
+
    Log into Minio Dashboard at `http://node-ip:31207` with credentials `minioadmin`/`minioadmin` and create the bucket `argo-workflows`.
 
 4. **Install Jaeger**
@@ -112,7 +112,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    kubectl apply -n argo-workflows -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start/base/agent-role.yaml
    kubectl apply -n argo-workflows -f https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start/base/agent-default-rolebinding.yaml
    ```
-   
+
    :warning: Role `agent` must be extended:
 
    ```yaml
@@ -123,10 +123,10 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
      verbs:
      - create
    ```
-   
+
    Edit deployments to add `node-role.kubernetes.io/master: 'true'` to `nodeSelector`.
 
-   Edit the `workflow-controller` deployment add add `ARGO_EXECUTOR_PLUGINS=true`.
+   Edit the `workflow-controller` deployment and add `ARGO_EXECUTOR_PLUGINS=true`.
 
    Create the ConfigMap `workflow-controller-configmap` (namespace `argo-workflows`):
 
@@ -146,11 +146,11 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
        secretKeySecret:
          name: argo-workflows-s3
          key: secret_key
-     insecure: true
-     bucket: argo-workflows
-     endpoint: minio.default.svc.cluster.local:9000
-     region: eu-central-1
-     pathStyleEndpoint: true
+       insecure: true
+       bucket: argo-workflows
+       endpoint: minio.default.svc.cluster.local:9000
+       region: eu-central-1
+       pathStyleEndpoint: true
    ```
 
    And the Secret `argo-workflows-s3` (namespace `argo-workflows`):
@@ -183,7 +183,7 @@ On [Hetzner Cloud](https://hetzner.cloud) in region `nbg1`. OS is Ubuntu 22.04 (
    kubectl apply -f krustlet1.yaml
    kubectl apply -f krustlet2.yaml
    ```
-   
+
    Accept the CSRs:
 
    ```shell

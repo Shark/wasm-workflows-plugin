@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argowf
+
+resources:
+- https://github.com/argoproj/argo-workflows/releases/download/v3.3.6/namespace-install.yaml
+- https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start/base/agent-role.yaml
+- https://raw.githubusercontent.com/argoproj/argo-workflows/master/manifests/quick-start/base/agent-default-rolebinding.yaml
+- s3.yaml
+
+patches:
+- path: workflow-controller-configmap.yaml
+- path: deployment.yaml
+- path: agent-role.yaml

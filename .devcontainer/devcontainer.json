@@ -25,5 +25,15 @@
     "terminal.integrated.defaultProfile.linux": "zsh",
     "ltex.java.path": "/usr/lib/jvm/java-11-openjdk-amd64",
     "grammarly.startTextCheckInPausedState": true
-  }
+  },
+  "features": {
+    "docker-in-docker": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v1"
+    }
+  },
+  "runArgs": [
+    "--init"
+  ]
 }
