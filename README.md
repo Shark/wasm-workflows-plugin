@@ -47,13 +47,13 @@
 
 ## About The Project
 
-This is a tool which allows you use WebAssembly modules instead of containers for your steps in [Argo Workflows](https://argoproj.github.io/argo-workflows/). You might rightfully ask yourself what problem this solves for you.
+This is a tool that allows you run WebAssembly modules instead of containers for your steps in [Argo Workflows](https://argoproj.github.io/argo-workflows/). You might rightfully ask yourself what problem this solves for you.
 
 The two most important aspects are security and performance:
 
 * :lock: **Security**
 
-  The [list of things to do](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html) when you want to run containers securely is long and the topic is more complex than even ambitious users have the capacity to care about. Containers are [vulnerable in many ways](https://ieeexplore.ieee.org/document/8693491) because of their denylist approach to security: they're allowed to do many things by default.
+  The [list of things to do](https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html) when you want to run containers securely is long and the topic is more complex than even ambitious users care about. Containers are [vulnerable in many ways](https://ieeexplore.ieee.org/document/8693491) because of their denylist approach to security: they're allowed to do many things by default.
 
   WebAssembly's security model is the opposite. As with smartphone apps, they must be given permission for potentially infringing tasks. For example, you might want to give a module the permission to read and write files but not communicate over the internet.
 
@@ -171,7 +171,7 @@ Creating a new Wasm module is easy and works with every language.
 
 There are ready-to-use templates for:
 
-* [AssemblyScripts](wasm-modules/templates/assemblyscript/)
+* [AssemblyScript](wasm-modules/templates/assemblyscript/)
 * [Rust](wasm-modules/templates/rust/)
 * [TinyGo](wasm-modules/templates/tinygo/)
 
@@ -182,7 +182,7 @@ We created an easy-to-use wrapper for Rust. The wrapper abstracts all the file h
 ```rust
 fn run(invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
     // This is where your code goes
-    
+
     PluginResult {
         phase: Phase::Succeeded,
         message: "Done".to_string(),
@@ -193,7 +193,7 @@ fn run(invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
 
 For any other language you can easily parse the JSON yourself:
 
-* PluginInvocation: [Example](crates/workflow-model/doc/plugin-invocation.example.json), [Schema](crates/workflow-model/doc/plugin-invocation.schema.json) 
+* PluginInvocation: [Example](crates/workflow-model/doc/plugin-invocation.example.json), [Schema](crates/workflow-model/doc/plugin-invocation.schema.json)
 * PluginResult: [Example](crates/workflow-model/doc/plugin-result.example.json), [Schema](crates/workflow-model/doc/plugin-result.schema.json)
 
 ### Capabilities
@@ -204,7 +204,7 @@ Capabilities expand what modules can do. Out of the box, modules can take input 
 
 The HTTP capability provider allows you to make HTTP requests from your Wasm module. The capability is available in every module mode. Please refer to the [`wasi-experimental-http`](https://github.com/deislabs/wasi-experimental-http) repository for complete information of how to access the HTTP capability from your module. There you will find examples for both Rust and AssemblyScript.
 
-When using the HTTP capability, you need to whitelist the hosts that the module is allowed to connect to. This illustrates the ease-of-use that WebAssembly's capability-oriented security model offers: for you it's very easy to tell if a module should be able to connect outside – and now securing your code got easy.
+When using the HTTP capability, you need to whitelist the hosts that the module is allowed to connect to. This illustrates the ease-of-use that WebAssembly's capability-oriented security model offers: for you, it's very easy to tell if a module should be able to connect outside – and now securing your code got easy.
 
 You can find a full-featured module at [`wasm-modules/contrib/http-request`](wasm-modules/contrib/http-request/).
 
@@ -250,14 +250,14 @@ The `http-request` module can be used in a workflow like so:
 This plugin has two modes:
 
 * A `local` Mode.
-  
-  This is the default and it will run Wasm modules in the plugin process. This is a single container per workflow instance. This is fine for most use cases that don't need infinite scaling within a workflow. It's also very easy to use because there is nothing to configure: it just works.
+
+  This is the default. It will run Wasm modules in the plugin process. This is a single container per workflow instance. This is fine for most use cases that don't need infinite scaling within a workflow. It's also very easy to use because there is nothing to configure: it just works.
 
 * A `distributed` Mode.
 
   This mode is more advanced because it will orchestrate Wasm module invocations in a Kubernetes cluster. Much like Argo itself creates a Pod for each workflow task, the distributed mode will create Pods for Wasm modules.
 
-  What makes this possible is [Krustlet](https://docs.krustlet.dev). Krustlet shows up as a new node in your Kubernetes cluster and it will execute Wasm modules that Kubernetes schedules to this node. I [forked Krustlet](https://github.com/Shark/krustlet) since there are some changes necessary to make Krustlet aware of the particularities of running workflow tasks as Wasm modules (inputs, outputs, parameters, artifacts, etc.).
+  What makes this possible is [Krustlet](https://docs.krustlet.dev). Krustlet shows up as a new node in your Kubernetes cluster, and it will execute Wasm modules that Kubernetes schedules to this node. I [forked Krustlet](https://github.com/Shark/krustlet) since there are some changes necessary to make Krustlet aware of the particularities of running workflow tasks as Wasm modules (inputs, outputs, parameters, artifacts, etc.).
 
   For the distributed mode, you need to do a bit more:
 

@@ -64,6 +64,7 @@ mod tests {
                 bucket: "argo-workflows".to_string(),
                 endpoint: "minio.minio.svc.cluster.local:9000".to_string(),
                 region: "eu-central-1".to_string(),
+                path_style_endpoint: false,
             },
         };
         test_de(yaml, &expected);

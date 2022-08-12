@@ -1,0 +1,28 @@
+{
+  "name": "wasm-workflows-plugin devcontainer",
+  "extensions": [
+    "cschleiden.vscode-github-actions",
+    "rust-lang.rust-analyzer",
+    "serayuzgur.crates",
+    "vadimcn.vscode-lldb",
+    "znck.grammarly",
+    "valentjn.vscode-ltex",
+    "bierner.emojisense",
+    "bierner.markdown-emoji"
+  ],
+  "dockerFile": "Dockerfile",
+  "settings": {
+    "editor.formatOnSave": true,
+    "terminal.integrated.profiles.linux": {
+      "zsh": {
+        "path": "/usr/bin/zsh",
+        "args": [
+          "--login"
+        ]
+      }
+    },
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "ltex.java.path": "/usr/lib/jvm/java-11-openjdk-amd64",
+    "grammarly.startTextCheckInPausedState": true
+  }
+}
