@@ -75,6 +75,7 @@ impl DependencyProvider for RuntimeDependencyProvider {
                 Box::new(runner)
             }
             Mode::Distributed => {
+                tracing::warn!("Distributed mode is experimental!");
                 let client = self.client.as_ref().unwrap().clone();
                 let namespace = self.config.plugin_namespace.to_owned();
                 let wait_config = DistributedConfig {

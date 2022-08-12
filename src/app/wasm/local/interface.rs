@@ -44,7 +44,7 @@ fn setup_module(
     working_dir: &WorkingDir,
 ) -> anyhow::Result<(Linker<ModuleCtx>, Store<ModuleCtx>)> {
     let mut linker = Linker::new(engine);
-    let _ = wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| &mut ctx.wasi)?;
+    wasmtime_wasi::add_to_linker(&mut linker, |ctx: &mut ModuleCtx| &mut ctx.wasi)?;
     let preopen_working_dir =
         cap_std::fs::Dir::open_ambient_dir(working_dir.path(), cap_std::ambient_authority())?;
     let mut wasi = WasiCtxBuilder::new()

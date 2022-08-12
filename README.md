@@ -245,55 +245,17 @@ The `http-request` module can be used in a workflow like so:
           - https://httpbin.org
 ```
 
-### Distributed Mode
+### Execution Modes
 
-This plugin has two modes:
+The plugin has two modes of how it can execute a Wasm module.
 
-* A `local` Mode.
+The `local` mode is the default and recommended mode. It will run Wasm modules within the plugin process. Argo will create one plugin container per workflow instance. This is fine for most use cases that don't need infinite scaling within a workflow. It's also very easy to use because there is nothing to configure: it just works.
 
-  This is the default. It will run Wasm modules in the plugin process. This is a single container per workflow instance. This is fine for most use cases that don't need infinite scaling within a workflow. It's also very easy to use because there is nothing to configure: it just works.
-
-* A `distributed` Mode.
-
-  This mode is more advanced because it will orchestrate Wasm module invocations in a Kubernetes cluster. Much like Argo itself creates a Pod for each workflow task, the distributed mode will create Pods for Wasm modules.
-
-  What makes this possible is [Krustlet](https://docs.krustlet.dev). Krustlet shows up as a new node in your Kubernetes cluster, and it will execute Wasm modules that Kubernetes schedules to this node. I [forked Krustlet](https://github.com/Shark/krustlet) since there are some changes necessary to make Krustlet aware of the particularities of running workflow tasks as Wasm modules (inputs, outputs, parameters, artifacts, etc.).
-
-  For the distributed mode, you need to do a bit more:
-
-  * Create a service account and proper credentials for this plugin. See [`argo-plugin/rbac.yaml`](argo-plugin/rbac.yaml) for details.
-  * Inject the service account credentials into the plugin container. For this, there is a special [`plugin-distributed.yaml`](argo-plugin/plugin-distributed.yaml) showing you how.
-
-  By default, the plugin will be registered to the `wasm_distributed` key. This allows you to run the plugin in both modes simultaneously.
-
-### :construction: Module Source
-
-There is not a single idea of how Wasm modules can be distributed. There are a lot of practical options because of their comparably small size. In Cloud-Native, OCI/Docker registries are a natural fit since they're required anyway for container images. Other viable options include the [WebAssembly package manager WAPM](https://wapm.io) that already serves WASI-compatible Wasm modules. Moreover, the [Bindle](https://github.com/deislabs/bindle) project is another alternative that provides a modern infrastructure for distributing applications as a bunch of independent bundles with well-defined relationships between each of them.
-
-Currently, this project only supports OCI registries and the format created by the [`wasm-to-oci`](https://github.com/engineerd/wasm-to-oci) tool (see [roadmap](#roadmap)). Other module sources can be represented in the invocation format without issue however:
-
-```yaml
-- name: wasm
-  plugin:
-    wasm:
-      module:
-        # you would use one of these options
-        oci: ghcr.io/someone/somemodule:latest    # already supported
-        wapm: syrusakbary/qr2text@0.0.1           # on the roadmap
-        bindle: example.com/stuff/mybindle/v1.2.3 # on the roadmap
-```
+The :test_tube: `distributed` mode is more advanced. It is provided as a technical prototype. This mode orchestrates Wasm modules in a Kubernetes cluster much like Argo itself. It creates a Pod for each workflow task. The Pod is executed by a virtual Kubernetes node that is provided by Krustlet. [Read more about :test_tube: `distributed` mode](doc/distributed-mode.md).
 
 ## Roadmap
 
-- [x] **Distributed Mode**
-- [x] Create ready-to-use modules for demo (cowsay), and then image/text processing
-- [x] Support input + output artifacts
-- [ ] Enable additional capability providers (~~HTTP~~, S3, SQL, etc.)
-- [ ] Support authentication for OCI (pull secrets)
-- [ ] Support [WAPM](https://wapm.io) as a module source
-- [ ] Support [Bindle]() as a module source
-- [ ] Implement CLI to invoke modules locally (greatly improves developer experience)
-
+Our roadmap is managed on the [*Developing wasm-workflows-plugin* GitHub project board](https://github.com/users/Shark/projects/1/views/1).
 
 ## Contributing
 

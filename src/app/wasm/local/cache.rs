@@ -71,7 +71,7 @@ impl ModuleCache for FSCache {
         let image = FSCache::canonical_name(image);
         let path = self.base_dir.join(image);
         let f = File::create(&path)?;
-        let _ = zstd::stream::copy_encode(data, f, 0)?;
+        zstd::stream::copy_encode(data, f, 0)?;
         Ok(())
     }
 

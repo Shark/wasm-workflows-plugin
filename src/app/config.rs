@@ -144,7 +144,7 @@ impl FromStr for LogLevel {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
     Local,
     Distributed,

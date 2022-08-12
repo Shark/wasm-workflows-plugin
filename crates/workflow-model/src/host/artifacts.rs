@@ -66,7 +66,7 @@ impl ArtifactManager {
             ))?;
         match status_code {
             200 => Ok(()),
-            code => return Err(anyhow!(format!("Unexpected status code {} != 200", code))),
+            code => Err(anyhow!(format!("Unexpected status code {} != 200", code))),
         }
     }
 
@@ -103,7 +103,7 @@ impl ArtifactManager {
                 });
                 Ok(artifact)
             }
-            code => return Err(anyhow!(format!("Unexpected status code {} != 200", code))),
+            code => Err(anyhow!(format!("Unexpected status code {} != 200", code))),
         }
     }
 }
