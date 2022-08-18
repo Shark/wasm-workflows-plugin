@@ -48,13 +48,13 @@ jobs:
 
           Ensure that you enabled executor plugins [as described in Argo Workflows' documentation](https://argoproj.github.io/argo-workflows/executor_plugins/).
 
-          Copy the URL to the ConfigMap YAML in this release and apply it with `kubectl`:
+          Copy the URL to the Executor Plugin configuration from this release and apply it with `kubectl`:
 
           ```
-          kubectl apply -f https://.../wasm-executor-plugin-configmap.yaml
+          kubectl apply -f https://github.com/Shark/wasm-workflows-plugin/releases/download/${{ needs.changelog.outputs.tag }}/wasm-executor-plugin-configmap.yaml
           ```
 
-          That's all you need to submit a workflow with a Wasm module. Use our example:
+          That's all you need to submit a workflow with a Wasm module. You can use our example:
 
           ```
           kubectl create -f https://raw.githubusercontent.com/Shark/wasm-workflows-plugin/67ae607ec65e1ac93bc1749c5f7a9bde4b673cfd/wasm-modules/examples/ferris-says/workflow.yaml
