@@ -40,7 +40,7 @@ jobs:
         tags: sh4rk/wasm-workflows-plugin:${{ steps.tag.outputs.tag }}
         outputs: type=docker,dest=/tmp/container-image.tar
         cache-from: type=local,src=/tmp/.buildx-cache
-        cache-to: type=local,dest=/tmp/.buildx-cache-new
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max,compression=estargz
 
     - name: Compress the image
       run: bzip2 /tmp/container-image.tar
