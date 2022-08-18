@@ -1,3 +1,4 @@
+# Executes the module from a locally-running wasm-workflows-plugin instance
 POST http://localhost:3000/api/v1/template.execute
 Content-Type: application/json
 
@@ -32,4 +33,3 @@ Content-Type: application/json
     }
   }
 }
-

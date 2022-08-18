@@ -1,0 +1,41 @@
+# Executes the module from a locally-running wasm-workflows-plugin instance
+POST http://localhost:3000/api/v1/template.execute
+Content-Type: application/json
+
+{
+  "template": {
+    "inputs": {
+      "artifacts": [],
+      "parameters": [{
+        "name": "url",
+        "value": "http://ip4.me"
+      }]
+    },
+    "metadata": {},
+    "name": "hello",
+    "outputs": {
+      "parameters": [{
+        "name": "message",
+        "value": ""
+      }]
+    },
+    "plugin": {
+      "wasm": {
+        "module": {
+          "oci": "ghcr.io/shark/wasm-workflows-plugin-http-request:latest"
+        },
+        "permissions": {
+          "http": {
+            "allowed_hosts": ["https://ip4.me"]
+          }
+        }
+      }
+    }
+  },
+  "workflow": {
+    "metadata": {
+      "name": "hello-n7nbj"
+    }
+  }
+}
+
