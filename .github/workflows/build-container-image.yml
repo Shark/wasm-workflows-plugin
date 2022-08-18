@@ -29,7 +29,10 @@ jobs:
 
     - name: Get tag
       id: tag
-      run: echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
+      run: |
+        tag="${GITHUB_REF#refs/tags/}"
+        tag="${tag#refs/heads/}"
+        echo "::set-output name=tag::$tag"
 
     - name: docker build
       uses: docker/build-push-action@v2
