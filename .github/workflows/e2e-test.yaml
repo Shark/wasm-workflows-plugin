@@ -1,0 +1,57 @@
+name: Run end-to-end test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-container-image.yml
+  e2e-test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+    - name: Install k8s tooling
+      run: .devcontainer/install-k8s.sh
+
+    - name: Create kind k8s cluster and install Minio & Argo Workflows
+      run: .devcontainer/install-argo.sh
+
+    - name: Download container image artifact
+      uses: actions/download-artifact@v3
+      with:
+        name: container-image
+        path: /tmp
+
+    - name: Load image into kind k8s node
+      run: |
+        bunzip /tmp/container-image.tar.bz2
+        kind load image-archive /tmp/container-image.tar
+        rm /tmp/container-image.tar
+
+    - name: Build Argo Executor Plugin
+      run: |
+        cd argo-plugin
+        echo '[{"op": "replace", "path": "/spec/sidecar/container/image", "value": "sh4rk/wasm-workflows-plugin:${{ needs.build.outputs.version }}"}]' > image.json
+        kubectl kustomize . > plugin_with_image.yaml
+        mv plugin_with_image.yaml plugin.yaml
+        argo executor-plugin build .
+
+    - name: Install Executor Plugin
+      run: kubectl apply -f argo-plugin/wasm-executor-plugin-configmap.yaml
+
+    - name: Create Wasm Workflow
+      run: |
+        workflow_name="$(kubectl -n argowf create -f https://raw.githubusercontent.com/Shark/wasm-workflows-plugin/67ae607ec65e1ac93bc1749c5f7a9bde4b673cfd/wasm-modules/examples/ferris-says/workflow.yaml)"
+        echo "WORKFLOW_NAME=$workflow_name" >> $GITHUB_ENV
+
+    - name: Wait for the workflow to finish
+      run: kubectl -n argowf wait "$WORKFLOW_NAME" --for condition=Completed=True --timeout=90s
+
+    - name: Verify that the workflow succeeded
+      run: |
+        workflow_status="$(kubectl -n argowf get "$WORKFLOW_NAME" -o jsonpath={.status.phase})"
+        if [[ $workflow_status != "Succeeded" ]]; then
+          >&2 echo "Workflow status is $workflow_status, not Succeeded"
+          kubectl -n argowf describe "$WORKFLOW_NAME"
+          exit 1
+        fi

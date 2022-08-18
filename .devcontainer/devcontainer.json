@@ -35,5 +35,6 @@
   },
   "runArgs": [
     "--init"
-  ]
+  ],
+  "postCreateCommand": ".devcontainer/install-argo.sh"
 }
