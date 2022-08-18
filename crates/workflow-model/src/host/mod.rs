@@ -1,6 +1,6 @@
 use super::model::{INPUT_FILE_NAME, RESULT_FILE_NAME};
 use crate::model::{PluginInvocation, PluginResult, INPUT_ARTIFACTS_PATH, OUTPUT_ARTIFACTS_PATH};
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::path::Path;
@@ -46,7 +46,7 @@ impl WorkingDir {
     pub fn result(&self) -> anyhow::Result<PluginResult> {
         let result_file = {
             let path = self.temp_dir.path().join(RESULT_FILE_NAME);
-            File::open(path)?
+            File::open(path).map_err(|err| anyhow!(err).context("Open module result file"))?
         };
         let plugin_result: PluginResult = serde_json::from_reader(result_file)?;
         Ok(plugin_result)

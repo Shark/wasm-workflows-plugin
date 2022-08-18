@@ -14,6 +14,7 @@ RUN touch ~/.zshrc \
  && rustup component add rustfmt \
  && rustup component add clippy \
  && cargo install cargo-expand \
+ && cargo install cargo-wasi \
  && mkdir ~/.cargo \
  && git clone https://github.com/ohmyzsh/ohmyzsh.git ~/.oh-my-zsh \
  && cp ~/.oh-my-zsh/templates/zshrc.zsh-template ~/.zshrc \

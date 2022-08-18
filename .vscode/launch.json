@@ -39,7 +39,10 @@
         }
       },
       "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "LOG_LEVEL": "debug"
+      }
     },
     {
       "type": "lldb",

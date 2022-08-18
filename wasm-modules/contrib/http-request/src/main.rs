@@ -1,13 +1,16 @@
 use anyhow::anyhow;
 use serde_json::json;
 use std::slice::Iter;
-use workflow_model::model::{Outputs, Parameter, Phase, PluginInvocation, PluginResult};
+use workflow_model::{
+    model::{Outputs, Parameter, Phase, PluginInvocation, PluginResult},
+    plugin::ArtifactManager,
+};
 
 fn main() {
     workflow_model::plugin::main(Box::new(run));
 }
 
-fn run(invocation: PluginInvocation) -> anyhow::Result<PluginResult> {
+fn run(invocation: PluginInvocation, _: ArtifactManager) -> anyhow::Result<PluginResult> {
     let req_params: RequestInfo = invocation.parameters.try_into()?;
 
     let mut req = http::request::Builder::new()
