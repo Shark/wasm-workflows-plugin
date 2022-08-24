@@ -33,7 +33,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: wasm-module
-        path: wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris_says.wasm
+        path: wasm-modules/examples/ferris-says/target/wasm32-wasi/release/ferris-says.wasm
         retention-days: 7
 
     - name: Install wasm-to-oci

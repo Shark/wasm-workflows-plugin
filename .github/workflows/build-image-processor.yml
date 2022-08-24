@@ -33,7 +33,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: wasm-module
-        path: wasm-modules/contrib/image-processor/target/wasm32-wasi/release/image_processor.wasm
+        path: wasm-modules/contrib/image-processor/target/wasm32-wasi/release/image-processor.wasm
         retention-days: 7
 
     - name: Install wasm-to-oci
