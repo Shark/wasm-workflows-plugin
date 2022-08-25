@@ -1,0 +1,64 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ExecutorPlugin
+metadata:
+  name: wasm
+  namespace: argo-workflows
+spec:
+  sidecar:
+    container:
+      image: ghcr.io/shark/wasm-workflows-plugin:v0.3.0
+      name: wasm-workflows-plugin
+      ports:
+      - containerPort: 3000
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 3000
+        initialDelaySeconds: 2
+        periodSeconds: 1
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532 # nonroot
+      resources:
+        limits:
+          cpu: 1024m
+          memory: 1024Mi
+        requests:
+          cpu: 1024m
+          memory: 512Mi
+      env:
+      - name: PLUGIN_NAMESPACE
+        valueFrom:
+          fieldRef:
+            fieldPath: metadata.namespace
+      - name: K8S_API_URL
+        value: https://kubernetes.default.svc/
+      - name: K8S_API_CA_CRT
+        valueFrom:
+          secretKeyRef:
+            name: wasm-workflows-plugin
+            key: ca.crt
+      - name: K8S_API_NAMESPACE
+        valueFrom:
+          secretKeyRef:
+            name: wasm-workflows-plugin
+            key: namespace
+      - name: K8S_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: wasm-workflows-plugin
+            key: token
+      - name: LOG_LEVEL
+        value: debug
+      - name: MODE
+        value: distributed
+      - name: ARGO_CONTROLLER_CONFIGMAP
+        value: workflow-controller-configmap
+#      - name: INSECURE_OCI_REGISTRIES
+#        value: docker-registry.default.svc.cluster.local:5000
+#      - name: OTEL_ENABLE
+#        value: '1'
+#      - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
+#        value: jaeger-agent-svc.default.svc.cluster.local
+#      - name: OTEL_EXPORTER_JAEGER_AGENT_PORT
+#        value: '6831'
