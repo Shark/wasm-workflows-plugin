@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/templates/rust/**'
+    - '.github/workflows/build-rust.yml'
   workflow_dispatch:
 jobs:
   build:
@@ -33,7 +34,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: wasm-module
-        path: wasm-modules/templates/rust/target/wasm32-wasi/release/rust.wasm
+        path: wasm-modules/templates/rust/target/wasm32-wasi/release/demo-mod.wasm
         retention-days: 7
 
     - name: Install wasm-to-oci
@@ -49,4 +50,4 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Push wasm module to ghcr.io
-      run: wasm-to-oci push wasm-modules/templates/rust/target/wasm32-wasi/release/rust.wasm ghcr.io/shark/wasm-workflows-plugin-example-rust:latest
+      run: wasm-to-oci push wasm-modules/templates/rust/target/wasm32-wasi/release/demo-mod.wasm ghcr.io/shark/wasm-workflows-plugin-example-rust:latest

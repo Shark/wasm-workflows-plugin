@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/contrib/image-processor/**'
+    - '.github/workflows/build-image-processor.yml'
   workflow_dispatch:
 jobs:
   build:

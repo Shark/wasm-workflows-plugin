@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/examples/text2qr/**'
+    - '.github/workflows/build-text2qr.yml'
   workflow_dispatch:
 jobs:
   build:

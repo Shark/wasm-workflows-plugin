@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/templates/tinygo/**'
+    - '.github/workflows/build-tinygo.yml'
   workflow_dispatch:
 jobs:
   build:

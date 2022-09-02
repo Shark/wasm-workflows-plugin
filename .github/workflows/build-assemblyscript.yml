@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/templates/assemblyscript/**'
+    - '.github/workflows/build-assemblyscript.yml'
   workflow_dispatch:
 jobs:
   build:

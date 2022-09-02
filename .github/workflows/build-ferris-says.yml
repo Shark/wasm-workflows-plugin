@@ -8,6 +8,7 @@ on:
     - '*'
     paths:
     - 'wasm-modules/examples/ferris-says/**'
+    - '.github/workflows/build-ferris-says.yml'
   workflow_dispatch:
 jobs:
   build:
