@@ -2,7 +2,7 @@
 
 This module uses the HTTP capability to make outgoing HTTP requests. Learn more about capabilities in the [main README](/README.md).
 
-The HTTP capability provider allows you to make HTTP requests from your Wasm module. The capability is available in every module mode. Please refer to the [`wasi-experimental-http`](https://github.com/deislabs/wasi-experimental-http) repository for complete information of how to access the HTTP capability from your module. There you will find examples for both Rust and AssemblyScript.
+The HTTP capability provider allows you to make HTTP requests from your Wasm module. The capability is available in every module mode. Please refer to the [`wasi-experimental-http`](https://github.com/deislabs/wasi-experimental-http) repository for complete information of how to access the HTTP capability from your module. There you will find examples for Rust.
 
 When using the HTTP capability, you need to whitelist the hosts that the module is allowed to connect to. This illustrates the ease-of-use that WebAssembly's capability-oriented security model offers: for you it's very easy to tell if a module should be able to connect outside – and now securing your code got easy.
 

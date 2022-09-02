@@ -9,7 +9,6 @@ Wasmtime
 wit-bindgen
 oci-distribution
 ConfigMap
-AssemblyScript
 TinyGo
 PluginInvocation
 PluginResult
