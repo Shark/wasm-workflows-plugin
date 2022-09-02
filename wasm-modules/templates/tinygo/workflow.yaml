@@ -1,0 +1,12 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: wasm-
+spec:
+  entrypoint: wasm
+  templates:
+    - name: wasm
+      plugin:
+        wasm:
+          module:
+            oci: ghcr.io/shark/wasm-workflows-plugin-example-tinygo:latest
