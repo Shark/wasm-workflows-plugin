@@ -65,5 +65,5 @@ indoc = "1.0.6"
 [profile.release]
 lto = true
 
-[profile.dev]
-debug = 0 # disables debug info - can be activated when required
+#[profile.dev]
+#debug = 0 # disables debug info - can be activated when required
