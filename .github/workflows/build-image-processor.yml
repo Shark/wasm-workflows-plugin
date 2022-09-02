@@ -1,9 +1,9 @@
 name: Build image-processor module
 on:
   push:
-    # Run for any branch, but not for tags
+    # Run for commits to main, but not for tags
     branches:
-    - '*'
+    - main
     tags-ignore:
     - '*'
     paths:
