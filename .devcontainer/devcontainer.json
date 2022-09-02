@@ -9,7 +9,8 @@
     "valentjn.vscode-ltex",
     "bierner.emojisense",
     "bierner.markdown-emoji",
-    "humao.rest-client"
+    "humao.rest-client",
+    "mutantdino.resourcemonitor"
   ],
   "dockerFile": "Dockerfile",
   "settings": {
