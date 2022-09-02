@@ -12,4 +12,4 @@ if (fileOrNull == null) {
 
 let file = changetype<Descriptor>(fileOrNull);
 
-file.writeStringLn("{\"phase\":\"Succeeded\",\"message\":\"Hello\",\"outputs\":{\"artifacts\":[],\"parameters\":[]}}");
+file.writeStringLn("{\"phase\":\"Succeeded\",\"message\":\"Hello\",\"outputs\":{\"artifacts\":[],\"parameters\":[{\"name\":\"question\",\"value\":\"Schnapspraline?\"}]}}");
